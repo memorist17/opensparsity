@@ -106,38 +106,42 @@ def list_remote_files(theme: str) -> list[str]:
     return files
 
 
-def _query_static(conn, theme: str, files: list[str], boxes: pd.DataFrame):
+def _static_sql(theme: str, files: list[str]) -> str:
+    """static モードの SELECT SQL（呼び出し側で boxes を register しておくこと）。"""
     spec = THEMES[theme]
-    preds = " OR ".join(
-        f"({spec['condition'].replace('b.', '')})"
-        .replace("min_lon", repr(r.min_lon)).replace("max_lon", repr(r.max_lon))
-        .replace("min_lat", repr(r.min_lat)).replace("max_lat", repr(r.max_lat))
-        for r in boxes.itertuples(index=False)
-    )
     file_list = ", ".join(f"'{f}'" for f in files)
-    # マッチ行に loc_key を割り当てるため boxes と residual join
-    conn.register("boxes", boxes)
-    return conn.execute(f"""
+    return f"""
         SELECT b.loc_key, {spec['select']}
         FROM read_parquet([{file_list}]) t
         JOIN boxes b ON {spec['condition']}
-        WHERE ({preds}) {spec['extra_where']}
-    """).fetchdf()
+        {('WHERE ' + spec['extra_where'][4:]) if spec['extra_where'] else ''}
+    """
 
 
-def _query_join(conn, theme: str, files: list[str], box_cells: pd.DataFrame):
+def _join_sql(theme: str, files: list[str]) -> str:
+    """join モードの SELECT SQL（呼び出し側で box_cells を register しておくこと）。"""
     spec = THEMES[theme]
     file_list = ", ".join(f"'{f}'" for f in files)
-    conn.register("box_cells", box_cells)
-    return conn.execute(f"""
+    return f"""
         SELECT b.loc_key, {spec['select']}
         FROM read_parquet([{file_list}]) t
         JOIN box_cells b
           ON CAST(floor((t.bbox.xmin + t.bbox.xmax) / 2) AS INTEGER) = b.cell_x
          AND CAST(floor((t.bbox.ymin + t.bbox.ymax) / 2) AS INTEGER) = b.cell_y
          AND {spec['condition']}
-        WHERE 1=1 {spec['extra_where']}
-    """).fetchdf()
+        {('WHERE ' + spec['extra_where'][4:]) if spec['extra_where'] else ''}
+    """
+
+
+# 後方互換（検証スクリプト用）: SQL を実行して DataFrame を返す
+def _query_static(conn, theme: str, files: list[str], boxes: pd.DataFrame):
+    conn.register("boxes", boxes)
+    return conn.execute(_static_sql(theme, files)).fetchdf()
+
+
+def _query_join(conn, theme: str, files: list[str], box_cells: pd.DataFrame):
+    conn.register("box_cells", box_cells)
+    return conn.execute(_join_sql(theme, files)).fetchdf()
 
 
 def prefetch_theme(
@@ -169,18 +173,22 @@ def prefetch_theme(
         f"boxes={len(boxes)} (done: {len(manifest['done_chunks'])})")
 
     conn = _connect()
+    if mode == "static":
+        conn.register("boxes", boxes)
+    else:
+        conn.register("box_cells", box_cells)
     for ci, chunk in enumerate(chunks):
         if ci in manifest["done_chunks"]:
             continue
         t0 = time.time()
-        if mode == "static":
-            df = _query_static(conn, theme, chunk, boxes)
-        else:
-            df = _query_join(conn, theme, chunk, box_cells)
-        df.to_parquet(out_dir / f"chunk_{ci:04d}.parquet", index=False)
+        sql = _static_sql(theme, chunk) if mode == "static" else _join_sql(theme, chunk)
+        out_path = out_dir / f"chunk_{ci:04d}.parquet"
+        # duckdb COPY で直接 parquet 書き出し（pyarrow 非依存・省メモリ）
+        conn.execute(f"COPY ({sql}) TO '{out_path}' (FORMAT parquet)")
+        n = conn.execute(f"SELECT count(*) FROM '{out_path}'").fetchone()[0]
         manifest["done_chunks"].append(ci)
         manifest_path.write_text(json.dumps(manifest))
-        log(f"[{theme}] chunk {ci + 1}/{len(chunks)}: {len(df)} rows, "
+        log(f"[{theme}] chunk {ci + 1}/{len(chunks)}: {n} rows, "
             f"{time.time() - t0:.0f}s")
     conn.close()
 
