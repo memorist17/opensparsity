@@ -49,11 +49,19 @@ class MultifractalAnalyzer:
             q=0 で f(α) は最大（容量次元 D_0 ≒ 2）となる。
         """
         # Normalize image to probabilities
-        image = image.astype(np.float64)
+        raw = np.asarray(image)
+        raw_is_integer = np.issubdtype(raw.dtype, np.integer) or (
+            np.issubdtype(raw.dtype, np.floating) and np.all(raw == np.floor(raw))
+            and raw.max() < 2**31
+        )
+        raw_counts = raw.astype(np.int64) if raw_is_integer else None
+        image = raw.astype(np.float64)
         total = image.sum()
         if total == 0:
             raise ValueError("Image is empty (all zeros)")
-        image = image / total
+        if raw_is_integer:
+            total = int(raw_counts.sum())
+        image = image / (total if not raw_is_integer else float(total))
 
         # Get box sizes and q values
         box_sizes = self._get_box_sizes()
@@ -82,6 +90,16 @@ class MultifractalAnalyzer:
         mesh = np.zeros((len(q_values), r_steps_actual))
         q_arr = q_values  # alias for clarity inside loops
 
+        # 高速パス: 元画像が整数値（2値ラスタ等）なら、
+        #   1) int64 の積分画像でボックス質量（カウント）を厳密に求め、
+        #   2) 質量ヒストグラム（ユニーク値は高々 min(box数, r²) 個）の上で
+        #      Z(q) = Σ_v n_v (v/total)^q を計算する。
+        # reshape の全画素走査（シフト×サイズごと）と、全ボックスへの q 乗が消える。
+        int_image = None
+        if raw_is_integer:
+            int_image = np.zeros((H + 1, W + 1), dtype=np.int64)
+            int_image[1:, 1:] = raw_counts.cumsum(axis=0).cumsum(axis=1)
+
         for r_idx, r in enumerate(tqdm(box_sizes, desc="Computing Z(q,r)")):
             max_shift = min(r, self.grid_shift_count)
             shifts = np.linspace(0, r - 1, max_shift, dtype=int)
@@ -90,6 +108,38 @@ class MultifractalAnalyzer:
             counts = np.zeros(len(q_arr))
             for dx in shifts:
                 for dy in shifts:
+                    if int_image is not None:
+                        h_boxes = (H - dy) // r
+                        w_boxes = (W - dx) // r
+                        if h_boxes == 0 or w_boxes == 0:
+                            continue
+                        rows = dy + np.arange(h_boxes) * r
+                        cols = dx + np.arange(w_boxes) * r
+                        box_counts = (
+                            int_image[np.ix_(rows + r, cols + r)]
+                            - int_image[np.ix_(rows, cols + r)]
+                            - int_image[np.ix_(rows + r, cols)]
+                            + int_image[np.ix_(rows, cols)]
+                        )
+                        hist = np.bincount(box_counts.ravel())
+                        vals = np.nonzero(hist)[0]
+                        vals = vals[vals > 0]
+                        if len(vals) == 0:
+                            continue
+                        n_v = hist[vals].astype(np.float64)
+                        m_v = vals.astype(np.float64) / float(total)
+                        log_m = np.log(m_v)
+                        # 全 q を一括計算（q=1 は Σ m ln m の特別式）
+                        Z_all = (n_v[None, :]
+                                 * np.exp(q_arr[:, None] * log_m[None, :])).sum(axis=1)
+                        is_q1 = q_arr == 1.0
+                        if is_q1.any():
+                            Z_all[is_q1] = np.exp(-np.sum(n_v * m_v * log_m))
+                        pos = Z_all > 0
+                        Z_sum[pos] += Z_all[pos]
+                        counts[pos] += 1
+                        continue
+
                     masses = self._compute_box_masses(image, r, dx, dy)
                     if masses is None:
                         continue

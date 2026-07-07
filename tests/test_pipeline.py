@@ -114,3 +114,18 @@ def test_r_crit_max_slope():
     })
     r = find_r_crit_max_slope(df)
     assert r == 25.0
+
+
+def test_mfa_fast_path_matches_generic(config):
+    """整数ラスタの高速パス（積分画像+ヒストグラム）が汎用パスと一致する"""
+    from opensparsity.indicators.multifractal import MultifractalAnalyzer
+    rng = np.random.default_rng(7)
+    img = (rng.random((256, 256)) < 0.05).astype(np.uint8)
+    kw = dict(r_min=2, r_max=128, r_steps=10, q_min=-5, q_max=5, q_steps=11,
+              grid_shift_count=4)
+    df_fast, _, _ = MultifractalAnalyzer(**kw).analyze(img)
+    # 非整数化（微小ノイズ付与ではなく 0.5 倍）で汎用パスを通す。
+    # 質量は総和で正規化されるため 0.5 倍しても数学的には同一
+    df_generic, _, _ = MultifractalAnalyzer(**kw).analyze(img.astype(np.float64) * 0.5)
+    for c in ["alpha", "tau", "f_alpha"]:
+        assert np.abs(df_fast[c].values - df_generic[c].values).max() < 1e-9
