@@ -5,6 +5,9 @@ canvas:
   resolution_m: 1.0        # 1m/px -> 2000x2000
 
 analysis:
+  # joblib の内部並列数。複数プロセスでバッチを回すときは 1 にして
+  # プロセス並列に寄せる（メモリとコアの掛け算を防ぐ）
+  n_jobs: -1
   r_min: 2
   r_max: 2000
   r_steps: 20

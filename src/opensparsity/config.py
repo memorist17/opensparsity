@@ -27,6 +27,7 @@ def create_lacunarity_analyzer(config: dict) -> LacunarityAnalyzer:
         r_max=ac.get("r_max", 2000),
         r_steps=ac.get("r_steps", 20),
         full_scan=ac.get("lacunarity", {}).get("full_scan", True),
+        n_jobs=ac.get("n_jobs", -1),
     )
 
 
@@ -41,6 +42,7 @@ def create_mfa_analyzer(config: dict) -> MultifractalAnalyzer:
         q_max=mfa.get("q_max", 10),
         q_steps=mfa.get("q_steps", 41),
         grid_shift_count=mfa.get("grid_shift_count", 16),
+        n_jobs=ac.get("n_jobs", -1),
     )
 
 
