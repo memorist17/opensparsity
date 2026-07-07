@@ -169,7 +169,7 @@ def run_batch(
                 m = process_location(lat, lon, config, store, images_dir, name=name)
                 n_ok += 1
                 log(f"[{i}/{len(locations)}] OK {label}: {time.time()-t0:.0f}s "
-                    f"density={m['density']:.4f} r_crit={m['perc_dcrit']}")
+                    f"density={m['density']:.4f} r_crit={m['r_crit']:.1f}")
             except Exception as e:  # noqa: BLE001 — バッチは1地点の失敗で止めない
                 store.mark_failed(lat, lon, name, f"{type(e).__name__}: {e}",
                                   CODE_VERSION, OVERTURE_RELEASE)
