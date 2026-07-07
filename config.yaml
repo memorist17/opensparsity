@@ -1,0 +1,31 @@
+# Open-Sparsity パイプライン設定（唯一の設定ファイル）
+
+canvas:
+  half_size_m: 1000        # 2km x 2km
+  resolution_m: 1.0        # 1m/px -> 2000x2000
+
+analysis:
+  r_min: 2
+  r_max: 2000
+  r_steps: 20
+
+  mfa:
+    q_min: -10
+    q_max: 10
+    q_steps: 41
+    grid_shift_count: 16
+
+  lacunarity:
+    full_scan: true
+
+  percolation:
+    d_min: 1
+    d_max: 2000
+    d_steps: 100
+    distance_type: "shortest_path"
+    node_filter: "building"
+
+network:
+  snap_tolerance: 4.0
+  connection_threshold: 10.0
+  use_road_width: true

@@ -1,0 +1,20 @@
+# 地点リストの例（卒論の6地点）
+locations:
+  - name: "Siena"
+    lat: 43.3188
+    lon: 11.3308
+  - name: "Majuro"
+    lat: 7.103
+    lon: 171.38
+  - name: "Ibiza"
+    lat: 39.0197
+    lon: 1.4822
+  - name: "Lourmarin"
+    lat: 43.7644
+    lon: 5.3625
+  - name: "Yokohama"
+    lat: 35.4437
+    lon: 139.638
+  - name: "Hallstatt"
+    lat: 47.5622
+    lon: 13.6493
