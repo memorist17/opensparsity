@@ -21,7 +21,7 @@ from .network import NetworkBuilder
 from .project import AEQDTransformer
 from .raster import Rasterizer
 from .render import image_filename, render_overlay
-from .indicators.advanced import compute_all_advanced_metrics
+from .indicators.advanced import compute_all_advanced_metrics, find_r_crit_max_slope
 from .store import ResultStore
 
 
@@ -83,7 +83,9 @@ def process_location(
 
     perc = create_percolation_analyzer(config)
     perc_df, _ = perc.analyze(graph)
-    d_crit = perc.find_percolation_threshold(perc_df, 0.5)
+    # r_crit は論文 表1 の定義: argmax_r dG/dr（G(r)=0.5 交差の perc_dcrit は補助指標として併記）
+    r_crit = find_r_crit_max_slope(perc_df)
+    d_crit50 = perc.find_percolation_threshold(perc_df, 0.5)
 
     metrics = {
         "density": float(np.mean(b_raster)),
@@ -91,11 +93,13 @@ def process_location(
         "lacunarity_slope": float(lac.fit_power_law(lac_df)["beta"]),
         "mfa_alpha_width": float(mfa_df["alpha"].max() - mfa_df["alpha"].min()),
         "mfa_D0": float(dq_df.loc[dq_df["q"] == 0, "D_q"].values[0]),
-        "perc_dcrit": d_crit,
+        "r_crit": r_crit,
+        "perc_dcrit": d_crit50,
         "perc_gmax": float(perc_df["giant_fraction"].max()),
     }
+    # γ は表1どおり r_crit（最大勾配点）で評価
     metrics.update(
-        compute_all_advanced_metrics(perc_df, mfa_df, lac_df, r_crit=d_crit)
+        compute_all_advanced_metrics(perc_df, mfa_df, lac_df, r_crit=r_crit)
     )
 
     # 6. オーバーレイ画像（唯一のファイル成果物）

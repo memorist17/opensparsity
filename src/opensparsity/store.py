@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS locations (
     lacunarity_slope REAL,
     mfa_alpha_width REAL,
     mfa_D0 REAL,
-    perc_dcrit REAL,
+    r_crit REAL,                       -- 論文 表1: argmax_r dG/dr
+    perc_dcrit REAL,                   -- 補助: G(r)=0.5 交差
     perc_gmax REAL,
     -- 追加指標
     W_trans REAL,
@@ -60,6 +61,11 @@ class ResultStore:
         self.conn = sqlite3.connect(self.db_path, timeout=60)
         self.conn.execute("PRAGMA journal_mode=WAL;")
         self.conn.executescript(SCHEMA)
+        # 旧スキーマからのマイグレーション（列が無ければ追加）
+        try:
+            self.conn.execute("ALTER TABLE locations ADD COLUMN r_crit REAL")
+        except sqlite3.OperationalError:
+            pass
 
     # --- 再開サポート ---
     def done_keys(self) -> set[tuple[float, float]]:

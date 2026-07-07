@@ -103,3 +103,14 @@ def test_render_overlay(tmp_path):
     from PIL import Image
     px = np.array(Image.open(out))
     assert (px[40:46, 40:46, 0] == 230).any()
+
+
+def test_r_crit_max_slope():
+    """r_crit（表1: argmax dG/dr）が最急上昇区間の中点を返す"""
+    from opensparsity.indicators import find_r_crit_max_slope
+    df = pd.DataFrame({
+        "d": [0.0, 10.0, 20.0, 30.0, 40.0],
+        "giant_fraction": [0.0, 0.05, 0.10, 0.90, 0.95],  # 20-30 で急上昇
+    })
+    r = find_r_crit_max_slope(df)
+    assert r == 25.0
