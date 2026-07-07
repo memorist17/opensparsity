@@ -16,7 +16,8 @@ from .config import (
     create_mfa_analyzer,
     create_percolation_analyzer,
 )
-from .fetch import OVERTURE_RELEASE, OvertureFetcher
+from .fetch import OVERTURE_RELEASE, CacheFetcher, OvertureFetcher
+from .prefetch import loc_key as make_loc_key
 from .network import NetworkBuilder
 from .project import AEQDTransformer
 from .raster import Rasterizer
@@ -32,6 +33,8 @@ def process_location(
     store: ResultStore,
     images_dir: str | Path,
     name: str | None = None,
+    cache: CacheFetcher | None = None,
+    no_image: bool = False,
 ) -> dict:
     """1地点を処理して結果を store に保存し、指標 dict を返す。失敗時は例外を送出。"""
     t0 = time.time()
@@ -39,10 +42,14 @@ def process_location(
     canvas_px = int(2 * half / float(config["canvas"]["resolution_m"]))
     net_cfg = config.get("network", {})
 
-    # 1. fetch（建物・道路を並列取得）
-    bbox = OvertureFetcher(lat=lat, lon=lon, half_size_m=half)._get_bbox_wgs84()
-    with OvertureFetcher(bbox_wgs84=bbox) as fetcher:
-        buildings_gdf, roads_gdf = fetcher.fetch_all(verbose=False)
+    # 1. fetch（プリフェッチ済みキャッシュがあればローカル、無ければ S3 並列取得）
+    key = make_loc_key(lat, lon)
+    if cache is not None and cache.has(key):
+        buildings_gdf, roads_gdf = cache.fetch_all(key)
+    else:
+        bbox = OvertureFetcher(lat=lat, lon=lon, half_size_m=half)._get_bbox_wgs84()
+        with OvertureFetcher(bbox_wgs84=bbox) as fetcher:
+            buildings_gdf, roads_gdf = fetcher.fetch_all(verbose=False)
 
     # 2. 投影（AEQD, 中心原点メートル座標）
     transformer = AEQDTransformer(center_lat=lat, center_lon=lon, half_size_m=half)
@@ -102,18 +109,19 @@ def process_location(
         compute_all_advanced_metrics(perc_df, mfa_df, lac_df, r_crit=r_crit)
     )
 
-    # 6. オーバーレイ画像（唯一のファイル成果物）
-    img_path = Path(images_dir) / image_filename(lat, lon)
-    render_overlay(
-        b_raster, r_raster, graph, img_path,
-        half_size_m=half,
-        metadata={
-            "lat": lat, "lon": lon,
-            "overture_release": OVERTURE_RELEASE,
-            "code_version": CODE_VERSION,
-            **{k: f"{v:.6g}" for k, v in metrics.items() if v is not None},
-        },
-    )
+    # 6. オーバーレイ画像（--no-image 時はスキップ。後から選択的に再生成可能）
+    if not no_image:
+        img_path = Path(images_dir) / image_filename(lat, lon)
+        render_overlay(
+            b_raster, r_raster, graph, img_path,
+            half_size_m=half,
+            metadata={
+                "lat": lat, "lon": lon,
+                "overture_release": OVERTURE_RELEASE,
+                "code_version": CODE_VERSION,
+                **{k: f"{v:.6g}" for k, v in metrics.items() if v is not None},
+            },
+        )
 
     # 7. 保存（db が真実源。画像を書いた後にコミット）
     n_building_nodes = sum(
@@ -141,6 +149,8 @@ def run_batch(
     out_dir: str | Path,
     *,
     force: bool = False,
+    cache_dir: str | Path | None = None,
+    no_image: bool = False,
     log=print,
 ) -> dict[str, int]:
     """複数地点を順に処理する。処理済み地点はスキップ（再開可能）。
@@ -153,6 +163,7 @@ def run_batch(
     out_dir = Path(out_dir)
     store = ResultStore(out_dir / "results.db")
     images_dir = out_dir / "images"
+    cache = CacheFetcher(cache_dir) if cache_dir else None
 
     done = set() if force else store.done_keys()
     n_skip = n_ok = n_fail = 0
@@ -166,7 +177,8 @@ def run_batch(
             label = name or f"{lat:.4f},{lon:.4f}"
             try:
                 t0 = time.time()
-                m = process_location(lat, lon, config, store, images_dir, name=name)
+                m = process_location(lat, lon, config, store, images_dir, name=name,
+                                     cache=cache, no_image=no_image)
                 n_ok += 1
                 log(f"[{i}/{len(locations)}] OK {label}: {time.time()-t0:.0f}s "
                     f"density={m['density']:.4f} r_crit={m['r_crit']:.1f}")

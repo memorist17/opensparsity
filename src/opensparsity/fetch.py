@@ -142,27 +142,9 @@ class OvertureFetcher:
                 crs="EPSG:4326",
             )
 
-        if len(result) == 0:
-            return gpd.GeoDataFrame(
-                columns=["id", "name", "height", "num_floors", "geometry"],
-                geometry="geometry",
-                crs="EPSG:4326",
-            )
-
-        # Convert WKB to geometry (handle bytearray from DuckDB)
-        geometries = [
-            wkb.loads(bytes(g)) if g is not None else None 
-            for g in tqdm(result["geometry"], desc="Parsing buildings", disable=not verbose)
-        ]
-        gdf = gpd.GeoDataFrame(
-            result.drop(columns=["geometry"]),
-            geometry=geometries,
-            crs="EPSG:4326",
-        )
-
+        gdf = buildings_gdf_from_df(result, verbose=verbose)
         if verbose:
             print(f"Fetched {len(gdf)} buildings")
-
         return gdf
 
     def fetch_roads(self, verbose: bool = True, conn=None) -> gpd.GeoDataFrame:
@@ -201,32 +183,10 @@ class OvertureFetcher:
                 crs="EPSG:4326",
             )
 
-        if len(result) == 0:
-            return gpd.GeoDataFrame(
-                columns=["id", "name", "class", "subclass", "width", "geometry"],
-                geometry="geometry",
-                crs="EPSG:4326",
-            )
-
-        # Convert WKB to geometry (handle bytearray from DuckDB)
-        geometries = [
-            wkb.loads(bytes(g)) if g is not None else None
-            for g in tqdm(result["geometry"], desc="Parsing roads", disable=not verbose)
-        ]
-        gdf = gpd.GeoDataFrame(
-            result.drop(columns=["geometry"]),
-            geometry=geometries,
-            crs="EPSG:4326",
-        )
-
-        # Add road width based on class
-        gdf["width"] = gdf["class"].apply(
-            lambda x: self.road_width_fallback.get(x, self.road_width_fallback["default"])
-        )
-
+        gdf = roads_gdf_from_df(result, road_width_fallback=self.road_width_fallback,
+                                verbose=verbose)
         if verbose:
             print(f"Fetched {len(gdf)} road segments")
-
         return gdf
 
     def _get_bbox_wgs84(self) -> tuple[float, float, float, float]:
@@ -286,6 +246,95 @@ class OvertureFetcher:
         except:
             pass
 
+ROAD_WIDTH_FALLBACK = {
+    "motorway": 20, "trunk": 15, "primary": 12, "secondary": 10,
+    "tertiary": 8, "residential": 6, "service": 4, "default": 5,
+}
+
+_BUILDING_COLS = ["id", "name", "height", "num_floors", "geometry"]
+_ROAD_COLS = ["id", "name", "class", "subclass", "width", "geometry"]
 
 
+def buildings_gdf_from_df(result, verbose: bool = False) -> gpd.GeoDataFrame:
+    """クエリ結果（WKB 列を含む DataFrame）→ 建物 GeoDataFrame。"""
+    if len(result) == 0:
+        return gpd.GeoDataFrame(columns=_BUILDING_COLS, geometry="geometry",
+                                crs="EPSG:4326")
+    geometries = [
+        wkb.loads(bytes(g)) if g is not None else None
+        for g in tqdm(result["geometry"], desc="Parsing buildings", disable=not verbose)
+    ]
+    return gpd.GeoDataFrame(result.drop(columns=["geometry"]), geometry=geometries,
+                            crs="EPSG:4326")
 
+
+def roads_gdf_from_df(result, road_width_fallback=None,
+                      verbose: bool = False) -> gpd.GeoDataFrame:
+    """クエリ結果（WKB 列を含む DataFrame）→ 道路 GeoDataFrame（width 付与込み）。"""
+    fallback = road_width_fallback or ROAD_WIDTH_FALLBACK
+    if len(result) == 0:
+        return gpd.GeoDataFrame(columns=_ROAD_COLS, geometry="geometry",
+                                crs="EPSG:4326")
+    geometries = [
+        wkb.loads(bytes(g)) if g is not None else None
+        for g in tqdm(result["geometry"], desc="Parsing roads", disable=not verbose)
+    ]
+    gdf = gpd.GeoDataFrame(result.drop(columns=["geometry"]), geometry=geometries,
+                           crs="EPSG:4326")
+    gdf["width"] = gdf["class"].apply(
+        lambda x: fallback.get(x, fallback["default"]))
+    return gdf
+
+
+class CacheFetcher:
+    """prefetch 済みローカルキャッシュからの読み出し（S3 フェッチと同一の GDF を返す）。
+
+    cache_dir には finalize_cache() 後の buildings.parquet / roads.parquet
+    （無ければ <theme>/chunk_*.parquet 群）が必要。
+    """
+
+    def __init__(self, cache_dir):
+        import json as _json
+        from pathlib import Path as _P
+        self.cache_dir = _P(cache_dir)
+        self.conn = duckdb.connect()
+        self._sources = {}
+        for theme in ("buildings", "roads"):
+            final = self.cache_dir / f"{theme}.parquet"
+            chunks = self.cache_dir / theme
+            if final.exists():
+                self._sources[theme] = str(final)
+            elif chunks.exists() and any(chunks.glob("chunk_*.parquet")):
+                self._sources[theme] = str(chunks / "chunk_*.parquet")
+            else:
+                self._sources[theme] = None
+        # prefetch 対象の地点キー集合（無い地点は S3 フォールバックさせる）
+        keys_path = self.cache_dir / "locations.json"
+        self._keys = set(_json.loads(keys_path.read_text())) if keys_path.exists() else None
+
+    def _read(self, theme: str, key: str):
+        src = self._sources[theme]
+        if src is None:
+            raise FileNotFoundError(f"cache not found for theme={theme} in {self.cache_dir}")
+        return self.conn.execute(
+            f"SELECT * EXCLUDE (loc_key) FROM read_parquet('{src}') WHERE loc_key = ?",
+            [key],
+        ).fetchdf()
+
+    def has(self, key: str) -> bool:
+        """この地点がキャッシュ対象か（対象外は S3 フォールバック）。
+
+        「行が無い」は正当な空地点でありうるため、存在判定は
+        prefetch 時に記録された locations.json のキー集合で行う。
+        """
+        if any(self._sources[t] is None for t in ("buildings", "roads")):
+            return False
+        return True if self._keys is None else key in self._keys
+
+    def fetch_all(self, key: str, verbose: bool = False):
+        b = buildings_gdf_from_df(self._read("buildings", key), verbose=verbose)
+        r = roads_gdf_from_df(self._read("roads", key), verbose=verbose)
+        return b, r
+
+    def close(self):
+        self.conn.close()

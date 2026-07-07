@@ -50,6 +50,21 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--start", type=int, default=None, help="地点リストの開始インデックス")
     p_run.add_argument("--end", type=int, default=None, help="地点リストの終了インデックス（排他）")
     p_run.add_argument("--force", action="store_true", help="処理済み地点も再計算する")
+    p_run.add_argument("--cache", default=None, help="prefetch 済みキャッシュディレクトリ（あればローカル読み出し）")
+    p_run.add_argument("--no-image", action="store_true", help="オーバーレイ画像を生成しない（数値のみ）")
+
+    p_pre = sub.add_parser("prefetch", help="全地点分の Overture データを一括抽出してローカルキャッシュ化")
+    p_pre.add_argument("--locations", required=True)
+    p_pre.add_argument("--cache", required=True, help="キャッシュ出力ディレクトリ")
+    p_pre.add_argument("--config", default=None)
+    p_pre.add_argument("--mode", default="auto", choices=["auto", "static", "join"])
+    p_pre.add_argument("--chunk-files", type=int, default=16)
+    p_pre.add_argument("--theme", default="both", choices=["both", "buildings", "roads"])
+    p_pre.add_argument("--no-finalize", action="store_true", help="loc_key ソートの最終化をスキップ")
+
+    p_merge = sub.add_parser("merge", help="別マシンの results.db を取り込む（UPSERT）")
+    p_merge.add_argument("--from", dest="src_db", required=True, help="取り込み元 results.db")
+    p_merge.add_argument("--out", default="results", help="取り込み先ディレクトリ")
 
     p_status = sub.add_parser("status", help="results.db の進捗を表示")
     p_status.add_argument("--out", default="results")
@@ -65,9 +80,44 @@ def main(argv: list[str] | None = None) -> int:
         if args.start is not None or args.end is not None:
             locations = locations[args.start or 0 : args.end]
         config = load_config(args.config)
-        summary = run_batch(locations, config, args.out, force=args.force)
+        summary = run_batch(locations, config, args.out, force=args.force,
+                            cache_dir=args.cache, no_image=args.no_image)
         print(f"完了: ok={summary['ok']} skipped={summary['skipped']} failed={summary['failed']}")
         return 0 if summary["failed"] == 0 else 1
+
+    if args.command == "prefetch":
+        import json as _json
+        from .config import load_config as _lc
+        from .prefetch import build_boxes, finalize_cache, prefetch_theme
+
+        locations = _load_locations(args.locations)
+        config = _lc(args.config)
+        half = float(config["canvas"]["half_size_m"])
+        boxes = build_boxes(locations, half)
+        cache = Path(args.cache)
+        cache.mkdir(parents=True, exist_ok=True)
+        (cache / "locations.json").write_text(
+            _json.dumps(sorted(boxes["loc_key"].tolist())))
+        themes = ["buildings", "roads"] if args.theme == "both" else [args.theme]
+        for theme in themes:
+            prefetch_theme(theme, boxes, cache, mode=args.mode,
+                           chunk_files=args.chunk_files)
+        if not args.no_finalize:
+            finalize_cache(cache)
+        print("prefetch 完了")
+        return 0
+
+    if args.command == "merge":
+        store = ResultStore(Path(args.out) / "results.db")
+        n0 = store.conn.execute("SELECT count(*) FROM locations").fetchone()[0]
+        store.conn.execute(f"ATTACH '{args.src_db}' AS src (READ_ONLY)")
+        with store.conn:
+            store.conn.execute("INSERT OR REPLACE INTO locations SELECT * FROM src.locations")
+            store.conn.execute("INSERT OR REPLACE INTO curves SELECT * FROM src.curves")
+        n1 = store.conn.execute("SELECT count(*) FROM locations").fetchone()[0]
+        print(f"merged: {n0} -> {n1} rows")
+        store.close()
+        return 0
 
     if args.command == "status":
         store = ResultStore(Path(args.out) / "results.db")
