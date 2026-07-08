@@ -15,10 +15,15 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+# 画像内の日本語（散布図タイトル・凡例）用フォント。Mac のヒラギノを優先
+plt.rcParams["font.sans-serif"] = ["Hiragino Sans", "Hiragino Kaku Gothic Pro",
+                                   "AppleGothic", "Arial Unicode MS", "DejaVu Sans"]
+plt.rcParams["axes.unicode_minus"] = False
 import numpy as np
 import pandas as pd
 from PIL import Image
 from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 HERE = Path(__file__).parent
@@ -120,6 +125,34 @@ def radar(profile: dict, color: str) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+def scatter_pca(Xz: np.ndarray, labels: np.ndarray, order: list,
+                names: dict[int, str]) -> str:
+    """全地点を PCA 2次元に射影し、クラスタ色で散布図 → data URI。"""
+    pca = PCA(n_components=2, random_state=SEED)
+    coords = pca.fit_transform(Xz)
+    evr = pca.explained_variance_ratio_ * 100
+    fig, ax = plt.subplots(figsize=(8.5, 6), dpi=120)
+    for rank, cid in enumerate(order, 1):
+        m = labels == cid
+        ax.scatter(coords[m, 0], coords[m, 1], s=5, c=PALETTE[rank - 1],
+                   alpha=0.35, linewidths=0, label=f"{rank}. {names[cid]}")
+    ax.set_xlabel(f"PC1 ({evr[0]:.0f}%)", color=C_TEXT, fontsize=10)
+    ax.set_ylabel(f"PC2 ({evr[1]:.0f}%)", color=C_TEXT, fontsize=10)
+    ax.set_title("9次元 OS 空間の PCA 射影（色＝クラスタ）", color=C_TEXT, fontsize=12)
+    ax.grid(True, alpha=0.2, linewidth=0.5)
+    ax.spines[["top", "right"]].set_visible(False)
+    for sp in ax.spines.values():
+        sp.set_color(C_MUTED)
+    ax.tick_params(colors=C_MUTED, labelsize=8)
+    leg = ax.legend(loc="best", fontsize=8, framealpha=0.9, markerscale=2)
+    for t in leg.get_texts():
+        t.set_color(C_TEXT)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
 def describe(profile: dict) -> tuple[str, str]:
     """z-score プロファイル → (類型名ドラフト, 日本語解説)。
 
@@ -163,6 +196,7 @@ def main():
     # クラスタをサイズ降順に並べ替え
     order = df["cluster"].value_counts().index.tolist()
 
+    names = {}
     cards = []
     for rank, cid in enumerate(order, 1):
         sub = df[df.cluster == cid]
@@ -177,6 +211,7 @@ def main():
             name, body = DESCRIPTIONS[rank]["name"], DESCRIPTIONS[rank]["body"]
         else:
             name, body = describe(prof)
+        names[cid] = name
         regions = sub["subregion"].value_counts().head(3)
         color = PALETTE[rank - 1]
         # 代表画像（中心最近傍の先頭3地点）
@@ -187,9 +222,13 @@ def main():
         )
 
         rep_rows = "".join(
-            f"<tr><td>{r['name']}</td><td>{r['lat']:.3f}, {r['lon']:.3f}</td>"
-            f"<td>{r['subregion']}</td><td>{r['density']:.4f}</td>"
-            f"<td>{r['gamma']:.4f}</td><td>{r['W_trans']:.1f}</td></tr>"
+            f"<tr><td>{r['lat']:.3f}, {r['lon']:.3f}</td>"
+            f"<td>{r['subregion']}</td>"
+            f"<td>{r['density']:.4f}</td><td>{r['lacunarity_mean']:.1f}</td>"
+            f"<td>{r['lacunarity_slope']:.3f}</td><td>{r['r_crit']:.0f}</td>"
+            f"<td>{r['mfa_alpha_width']:.3f}</td><td>{r['W_trans']:.0f}</td>"
+            f"<td>{r['gamma']:.4f}</td><td>{r['Delta_D']:.3f}</td>"
+            f"<td>{r['S_alpha']:.3f}</td></tr>"
             for _, r in reps.iterrows()
         )
         badges = "".join(
@@ -217,11 +256,12 @@ def main():
             </div>
           </div>
           <div class="gallery">{gallery}</div>
-          <table class="reps">
-            <thead><tr><th>代表地点</th><th>lat, lon</th><th>地域</th>
-              <th>d</th><th>γ</th><th>W_trans</th></tr></thead>
+          <div class="table-wrap"><table class="reps">
+            <thead><tr><th>lat, lon</th><th>地域</th>
+              <th>d</th><th>Λ̄</th><th>s_Λ</th><th>r_crit</th><th>Δα</th>
+              <th>W_trans</th><th>γ</th><th>ΔD</th><th>S_α</th></tr></thead>
             <tbody>{rep_rows}</tbody>
-          </table>
+          </table></div>
         </section>""")
 
     html = f"""<div class="wrap">
@@ -229,12 +269,16 @@ def main():
         <h1>都市形態カタログ（OS指標・試作）</h1>
         <p class="sub">global_v2 全球サンプル {len(df):,} 地点を 9 次元 Open-Sparsity 指標で
         教師なしクラスタリング（KMeans, k={K}）。各タイプの指標プロファイルを
-        レーダーで、突出軸をバッジで示す。類型名・解説は指標からの機械ドラフト
-        （代表画像を見て洗練する前段）。</p>
+        レーダーで、突出軸をバッジで示す。類型名・解説は各タイプの代表画像を
+        確認して記述した。</p>
       </header>
+      <div class="overview">
+        <img src="{scatter_pca(Xz, km.labels_.astype(int), order, names)}" alt="PCA散布図">
+      </div>
       {"".join(cards)}
-      <footer>OS指標 = [d, Λ̄, s_Λ, r_crit, Δα, W_trans, γ, ΔD, S_α]。
-      レーダーは各指標の z-score（全体平均=0, ±1σ 目盛）。</footer>
+      <footer>OS指標 = [d 密度, Λ̄ 空隙むら, s_Λ 減衰, r_crit 臨界距離,
+      Δα MFA幅, W_trans 転移幅, γ 臨界勾配, ΔD 次元ギャップ, S_α 歪度]。
+      レーダーは各指標の z-score（全体平均=0, ±1σ 目盛）。代表地点表の値は生の実測値。</footer>
     </div>
     <style>
       .wrap {{ max-width: 1000px; margin: 0 auto; font-family: system-ui, sans-serif;
@@ -261,7 +305,10 @@ def main():
                       border: 1px solid {C_GRID}; border-radius: 6px; display: block; }}
       .gallery figcaption {{ font-size: 11px; color: {C_MUTED}; margin-top: 3px;
                              font-variant-numeric: tabular-nums; }}
-      table.reps {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+      .overview img {{ width: 100%; max-width: 780px; display: block; margin: 8px auto 4px; }}
+      .table-wrap {{ overflow-x: auto; }}
+      table.reps {{ width: 100%; border-collapse: collapse; font-size: 12.5px;
+                    white-space: nowrap; font-variant-numeric: tabular-nums; }}
       table.reps th, table.reps td {{ text-align: left; padding: 6px 16px;
                                        border-top: 1px solid {C_GRID}; }}
       table.reps th {{ color: {C_MUTED}; font-weight: 600; }}
