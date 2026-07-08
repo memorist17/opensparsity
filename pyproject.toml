@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-analysis = ["matplotlib>=3.8"]
+analysis = ["matplotlib>=3.8", "scikit-learn>=1.4"]
 
 [project.scripts]
 ops = "opensparsity.cli:main"
