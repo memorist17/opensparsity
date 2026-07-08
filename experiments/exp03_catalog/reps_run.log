@@ -1,0 +1,261 @@
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 101.47it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 128.51it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 17.73it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 15.39it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 13.89it/s]Computing Z(q,r):  59%|█████▉    | 10/17 [00:00<00:00, 21.65it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 28.76it/s]
+Computing Percolation: 100 thresholds, 370 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 18566.26it/s]
+[1/18] OK t1_locv2_47700799: 106s density=0.0072 r_crit=233.2
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  42%|████▏     | 8/19 [00:00<00:00, 76.53it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 115.69it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.35it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.27it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.25it/s]Computing Z(q,r):  59%|█████▉    | 10/17 [00:00<00:00, 22.96it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 29.95it/s]
+Computing Percolation: 100 thresholds, 365 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 4073 / 66430 (6.1%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 22412.65it/s]
+[2/18] OK t1_locv2_31973957: 97s density=0.0065 r_crit=172.6
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 107.94it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 138.61it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.25it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.74it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 14.76it/s]Computing Z(q,r):  53%|█████▎    | 9/17 [00:00<00:00, 19.69it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 29.15it/s]
+Computing Percolation: 100 thresholds, 131 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 573 / 8515 (6.7%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 24618.79it/s]
+[3/18] OK t1_locv2_20425027: 103s density=0.0072 r_crit=314.0
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  47%|████▋     | 9/19 [00:00<00:00, 87.14it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 120.33it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.94it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.47it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 14.74it/s]Computing Z(q,r):  53%|█████▎    | 9/17 [00:00<00:00, 19.61it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 36.43it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 27.79it/s]
+Computing Percolation: 100 thresholds, 574 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 2564 / 164451 (1.6%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 20708.52it/s]
+[4/18] OK t2_locv2_25871300: 112s density=0.0211 r_crit=152.4
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 107.79it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 138.34it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.98it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.49it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.30it/s]Computing Z(q,r):  59%|█████▉    | 10/17 [00:00<00:00, 22.73it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 29.33it/s]
+Computing Percolation: 100 thresholds, 1159 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 12048 / 671061 (1.8%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 18086.69it/s]
+[5/18] OK t2_locv2_12944673: 104s density=0.0205 r_crit=112.1
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  37%|███▋      | 7/19 [00:00<00:00, 69.56it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 113.43it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.82it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.81it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.11it/s]Computing Z(q,r):  59%|█████▉    | 10/17 [00:00<00:00, 23.16it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 29.66it/s]
+Computing Percolation: 100 thresholds, 591 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 21126.80it/s]
+[6/18] OK t2_locv2_49478905: 110s density=0.0156 r_crit=213.0
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 103.39it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 126.76it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.56it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.24it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.19it/s]Computing Z(q,r):  53%|█████▎    | 9/17 [00:00<00:00, 19.94it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 29.46it/s]
+Computing Percolation: 100 thresholds, 437 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 42765 / 95266 (44.9%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 21845.33it/s]
+[7/18] OK t3_locv2_19200953: 110s density=0.0139 r_crit=192.8
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 105.53it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 136.96it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.29it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.74it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.16it/s]Computing Z(q,r):  59%|█████▉    | 10/17 [00:00<00:00, 22.78it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 29.99it/s]
+Computing Percolation: 100 thresholds, 360 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 536 / 64620 (0.8%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 23005.18it/s]
+[8/18] OK t3_locv2_4121232: 107s density=0.0125 r_crit=112.1
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 107.86it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 138.23it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.85it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.62it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.47it/s]Computing Z(q,r):  59%|█████▉    | 10/17 [00:00<00:00, 22.91it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 30.44it/s]
+Computing Percolation: 100 thresholds, 274 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 11604 / 37401 (31.0%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 23212.71it/s]
+[9/18] OK t3_locv2_3947821: 97s density=0.0093 r_crit=233.2
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  63%|██████▎   | 12/19 [00:00<00:00, 113.79it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 137.25it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.17it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.03it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 14.73it/s]Computing Z(q,r):  53%|█████▎    | 9/17 [00:00<00:00, 18.42it/s]Computing Z(q,r):  88%|████████▊ | 15/17 [00:00<00:00, 29.57it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 23.27it/s]
+Computing Percolation: 100 thresholds, 5518 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 1070835 / 15221403 (7.0%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 8679.73it/s]
+[10/18] OK t4_locv2_26903025: 116s density=0.0676 r_crit=233.2
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  53%|█████▎    | 10/19 [00:00<00:00, 97.85it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 127.87it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.67it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.41it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 14.92it/s]Computing Z(q,r):  53%|█████▎    | 9/17 [00:00<00:00, 18.64it/s]Computing Z(q,r):  88%|████████▊ | 15/17 [00:00<00:00, 30.80it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 25.37it/s]
+Computing Percolation: 100 thresholds, 2823 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 57430 / 3983253 (1.4%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 12624.32it/s]
+[11/18] OK t4_locv2_33432209: 97s density=0.0654 r_crit=253.4
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  47%|████▋     | 9/19 [00:00<00:00, 85.27it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 118.85it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 16.67it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.51it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.09it/s]Computing Z(q,r):  53%|█████▎    | 9/17 [00:00<00:00, 19.19it/s]Computing Z(q,r):  94%|█████████▍| 16/17 [00:00<00:00, 32.16it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 25.44it/s]
+Computing Percolation: 100 thresholds, 3008 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 34475 / 4522528 (0.8%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 11128.43it/s]
+[12/18] OK t4_locv2_25981512: 110s density=0.0669 r_crit=132.2
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 104.60it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 134.42it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 17.96it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.12it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.31it/s]Computing Z(q,r):  65%|██████▍   | 11/17 [00:00<00:00, 25.95it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 31.04it/s]
+Computing Percolation: 100 thresholds, 45 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 21 / 990 (2.2%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 25654.80it/s]
+[13/18] OK t5_locv2_12156567: 112s density=0.0013 r_crit=980.3
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  42%|████▏     | 8/19 [00:00<00:00, 75.00it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 112.32it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.80it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.37it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.43it/s]Computing Z(q,r):  65%|██████▍   | 11/17 [00:00<00:00, 26.80it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 32.06it/s]
+Computing Percolation: 100 thresholds, 64 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 316 / 2016 (15.7%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 25985.40it/s]
+[14/18] OK t5_locv2_26424647: 120s density=0.0022 r_crit=899.5
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  58%|█████▊    | 11/19 [00:00<00:00, 108.15it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 134.27it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 17.93it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.80it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.25it/s]Computing Z(q,r):  65%|██████▍   | 11/17 [00:00<00:00, 26.20it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 31.30it/s]
+Computing Percolation: 100 thresholds, 17 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Disconnected pairs: 7 / 136 (5.5%)
+Note: Disconnected pairs have infinite distance and remain isolated.
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 25938.80it/s]
+[15/18] OK t5_locv2_38641491: 101s density=0.0018 r_crit=980.3
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  42%|████▏     | 8/19 [00:00<00:00, 77.61it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 116.28it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 17.95it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 16.82it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.57it/s]Computing Z(q,r):  65%|██████▍   | 11/17 [00:00<00:00, 27.11it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 32.25it/s]
+Computing Percolation: 100 thresholds, 15 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 26224.23it/s]
+[16/18] OK t6_locv2_39517677: 106s density=0.0003 r_crit=51.5
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  42%|████▏     | 8/19 [00:00<00:00, 74.94it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 107.38it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 18.53it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 17.07it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 15.45it/s]Computing Z(q,r):  76%|███████▋  | 13/17 [00:00<00:00, 33.70it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 33.94it/s]
+Computing Percolation: 100 thresholds, 3 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 26041.87it/s]
+[17/18] OK t6_locv2_7574371: 123s density=0.0000 r_crit=31.3
+Computing Lacunarity: 19 box sizes
+Box sizes: 2 to 2000
+Computing Λ(r):   0%|          | 0/19 [00:00<?, ?it/s]Computing Λ(r):  37%|███▋      | 7/19 [00:00<00:00, 65.63it/s]Computing Λ(r): 100%|██████████| 19/19 [00:00<00:00, 102.98it/s]
+Computing MFA: 41 q-values, 17 box sizes
+Box sizes: 2 to 966
+Computing Z(q,r):   0%|          | 0/17 [00:00<?, ?it/s]Computing Z(q,r):  12%|█▏        | 2/17 [00:00<00:00, 16.81it/s]Computing Z(q,r):  24%|██▎       | 4/17 [00:00<00:00, 15.51it/s]Computing Z(q,r):  35%|███▌      | 6/17 [00:00<00:00, 14.52it/s]Computing Z(q,r):  71%|███████   | 12/17 [00:00<00:00, 28.45it/s]Computing Z(q,r): 100%|██████████| 17/17 [00:00<00:00, 30.97it/s]
+Computing Percolation: 100 thresholds, 1 nodes
+Distance range: 1.0 to 2000.0
+Distance type: shortest_path
+Node filter: building
+Computing pairwise shortest path distances...
+Computing percolation (shortest_path):   0%|          | 0/100 [00:00<?, ?it/s]Computing percolation (shortest_path): 100%|██████████| 100/100 [00:00<00:00, 29446.11it/s]
+[18/18] OK t6_locv2_11996322: 97s density=0.0000 r_crit=11.1
+完了: ok=18 skipped=0 failed=0

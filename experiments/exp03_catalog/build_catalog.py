@@ -17,13 +17,27 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from PIL import Image
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
 HERE = Path(__file__).parent
 VECS = HERE.parent / "exp01_density_breakdown" / "os_vectors.csv"
+IMG_DIR = HERE / "reps_out" / "images"   # 代表地点のオーバーレイ画像
 K = 6
 SEED = 42
+
+
+def embed_image(lat: float, lon: float, size: int = 420) -> str | None:
+    """代表地点のオーバーレイ PNG を縮小して data URI に。無ければ None。"""
+    p = IMG_DIR / f"{lat:.4f}_{lon:.4f}.png"
+    if not p.exists():
+        return None
+    im = Image.open(p).convert("RGB")
+    im.thumbnail((size, size), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, format="JPEG", quality=82)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 FEAT = ["density", "lacunarity_mean", "lacunarity_slope", "r_crit",
         "mfa_alpha_width", "W_trans", "gamma", "Delta_D", "S_alpha"]
@@ -53,6 +67,32 @@ LOW = {
     "mfa_alpha_width": "構造が単純（単一スケール的）", "W_trans": "連結が急峻（狭い転移）",
     "gamma": "連結がマイルド（緩慢）", "Delta_D": "質量が均等に分布",
     "S_alpha": "スペクトルが対称的",
+}
+
+
+# 代表画像を実際に見て洗練した日本語類型名・解説（rank をキーに機械ドラフトを上書き）。
+DESCRIPTIONS: dict[int, dict] = {
+    1: {"name": "街道集落型（疎・線形連結）",
+        "body": "幹線道路に沿って建物が線状に張り付き、道路から離れた背後は"
+                "広大な空地となる。密度は低い（d≈0.006）が、連結は一本の街道が"
+                "担うため転移は標準的。世界の疎居住で最も多い基本形（最大クラスタ）。"},
+    2: {"name": "分岐集村型（中密・急峻連結）",
+        "body": "枝分かれする在来道路網に建物が付随し、ある距離スケールで一気に"
+                "全体がつながる（γ が +0.8σ と急峻）。中密度ながら連結の立ち上がりが"
+                "鋭い、相転移的な集村。"},
+    3: {"name": "凝集開拓型（中密・漸進連結）",
+        "body": "建物が一角に塊で凝集し、そこから道路が放射・分岐する。連結が広い"
+                "距離範囲にわたって緩やかに進む（W_trans が +1.8σ と際立って大きい）。"
+                "開拓前線や緩斜面の集村に多い。"},
+    4: {"name": "稠密市街型（高密・密連結）",
+        "body": "密な街路網に建物がびっしり詰まった有機的な市街地（d≈0.062 と"
+                "本カタログ最高密）。近距離で全体が連結する、いわゆる「街」。"},
+    5: {"name": "山間散村型（疎・漸進連結）",
+        "body": "建物がごく小さな塊で点在し、間を長い道路が縫う。極めて疎（d≈0.005）で"
+                "建物間距離が大きく、連結は緩慢。山間・内陸の孤立集落。"},
+    6: {"name": "通過地・準無人型（極疎）",
+        "body": "建物がほとんど無く（d≈0）、道路網だけが広大な空地を貫く。峠道や"
+                "通過地の切り出しに相当する外れ値的タイプ（最小クラスタ）。"},
 }
 
 
@@ -132,9 +172,19 @@ def main():
         center = km.cluster_centers_[cid]
         dist = np.linalg.norm(scaler.transform(sub[FEAT].to_numpy(float)) - center, axis=1)
         reps = sub.iloc[np.argsort(dist)[:5]]
-        name, body = describe(prof)
+        # 日本語類型名・解説: 代表画像を見て洗練した手書き版があれば優先、なければ機械ドラフト
+        if rank in DESCRIPTIONS:
+            name, body = DESCRIPTIONS[rank]["name"], DESCRIPTIONS[rank]["body"]
+        else:
+            name, body = describe(prof)
         regions = sub["subregion"].value_counts().head(3)
         color = PALETTE[rank - 1]
+        # 代表画像（中心最近傍の先頭3地点）
+        gallery = "".join(
+            f'<figure><img src="{uri}"><figcaption>{r["lat"]:.3f}, {r["lon"]:.3f}</figcaption></figure>'
+            for _, r in reps.head(3).iterrows()
+            if (uri := embed_image(r["lat"], r["lon"]))
+        )
 
         rep_rows = "".join(
             f"<tr><td>{r['name']}</td><td>{r['lat']:.3f}, {r['lon']:.3f}</td>"
@@ -166,6 +216,7 @@ def main():
               <div class="regions"><b>主な地域:</b> {reg_txt}</div>
             </div>
           </div>
+          <div class="gallery">{gallery}</div>
           <table class="reps">
             <thead><tr><th>代表地点</th><th>lat, lon</th><th>地域</th>
               <th>d</th><th>γ</th><th>W_trans</th></tr></thead>
@@ -204,6 +255,12 @@ def main():
       .badges {{ display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }}
       .badge {{ color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 10px; }}
       .regions {{ font-size: 13px; color: {C_MUTED}; }}
+      .gallery {{ display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap; }}
+      .gallery figure {{ margin: 0; }}
+      .gallery img {{ width: 200px; height: 200px; object-fit: cover;
+                      border: 1px solid {C_GRID}; border-radius: 6px; display: block; }}
+      .gallery figcaption {{ font-size: 11px; color: {C_MUTED}; margin-top: 3px;
+                             font-variant-numeric: tabular-nums; }}
       table.reps {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
       table.reps th, table.reps td {{ text-align: left; padding: 6px 16px;
                                        border-top: 1px solid {C_GRID}; }}
