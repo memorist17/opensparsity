@@ -1,12 +1,15 @@
 #!/usr/bin/env python
-"""OS指標による都市形態カタログ（試作）。
+"""OS指標による都市形態カタログ。
 
 os_vectors.csv（global_v2 1万地点 × 9次元 OS指標）を KMeans でクラスタリングし、
-各クラスタ（形態タイプ）に指標プロファイル・レーダーチャート・日本語類型解説・
-代表地点・地理分布を与えた HTML カタログを生成する。
+各形態タイプに指標プロファイル・レーダー・日本語類型解説・代表画像・9次元全値を
+与えた HTML カタログを生成する。
 
-AlphaEarth が「学習された不透明な埋め込み」で地表を類型化するのに対し、
-本カタログは「各軸が物理的意味を持つ OS 指標」で都市形態を類型化する。
+改善点（2026-07-08）:
+- 指標を手法グループ順に並べる（密度 → ラキュナリティ → パーコレーション → MFA）
+- 桁レンジが 5 桁に及ぶ Λ̄ を対数変換してからクラスタリング（外れ値でスケールが
+  歪むのを防ぐ）
+- 「指標の見方」表（記号・意味・単位・大小の向き）をカタログ冒頭に置く
 """
 import base64
 import io
@@ -15,7 +18,6 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-# 画像内の日本語（散布図タイトル・凡例）用フォント。Mac のヒラギノを優先
 plt.rcParams["font.sans-serif"] = ["Hiragino Sans", "Hiragino Kaku Gothic Pro",
                                    "AppleGothic", "Arial Unicode MS", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -28,13 +30,69 @@ from sklearn.preprocessing import StandardScaler
 
 HERE = Path(__file__).parent
 VECS = HERE.parent / "exp01_density_breakdown" / "os_vectors.csv"
-IMG_DIR = HERE / "reps_out" / "images"   # 代表地点のオーバーレイ画像
+IMG_DIR = HERE / "reps_out" / "images"
 K = 6
 SEED = 42
 
+# 手法グループ順（密度 → ラキュナリティ → パーコレーション → MFA）
+FEAT = ["density", "lacunarity_mean", "lacunarity_slope",
+        "r_crit", "W_trans", "gamma",
+        "mfa_alpha_width", "Delta_D", "S_alpha"]
+# クラスタリング前に対数変換する特徴（5桁レンジの外れ値対策）
+LOG_FEATURES = {"lacunarity_mean"}
+
+GROUP = {
+    "density": "密度",
+    "lacunarity_mean": "ラキュナリティ", "lacunarity_slope": "ラキュナリティ",
+    "r_crit": "パーコレーション", "W_trans": "パーコレーション", "gamma": "パーコレーション",
+    "mfa_alpha_width": "MFA", "Delta_D": "MFA", "S_alpha": "MFA",
+}
+GROUP_COLOR = {"密度": "#52514e", "ラキュナリティ": "#1baf7a",
+               "パーコレーション": "#2a78d6", "MFA": "#eda100"}
+SHORT = {"density": "d", "lacunarity_mean": "Λ̄", "lacunarity_slope": "s_Λ",
+         "r_crit": "r_crit", "W_trans": "W_trans", "gamma": "γ",
+         "mfa_alpha_width": "Δα", "Delta_D": "ΔD", "S_alpha": "S_α"}
+MEANING = {"density": "密度", "lacunarity_mean": "空隙のムラ",
+           "lacunarity_slope": "ムラのスケール減衰", "r_crit": "連結までの距離",
+           "W_trans": "連結の緩やかさ", "gamma": "連結の急峻さ",
+           "mfa_alpha_width": "構造の複雑さ", "Delta_D": "質量の集中度",
+           "S_alpha": "複雑さの偏り"}
+UNIT = {"density": "占有率 0–1", "lacunarity_mean": "分散/平均²（対数軸）",
+        "lacunarity_slope": "log–log 勾配", "r_crit": "メートル",
+        "W_trans": "メートル", "gamma": "ΔG / m",
+        "mfa_alpha_width": "α 幅（無次元）", "Delta_D": "D₀−D₂（無次元）",
+        "S_alpha": "歪度（無次元）"}
+DIR_UP = {"density": "密", "lacunarity_mean": "空隙にムラ",
+          "lacunarity_slope": "急減衰", "r_crit": "連結に長距離（分断的）",
+          "W_trans": "漸進的な連結（緩い転移）", "gamma": "急峻な連結（相転移的）",
+          "mfa_alpha_width": "複雑（多重フラクタル強）", "Delta_D": "質量が集中（核的）",
+          "S_alpha": "右に偏り"}
+DIR_DOWN = {"density": "疎", "lacunarity_mean": "均質",
+            "lacunarity_slope": "緩やか", "r_crit": "近距離で連結（密結合）",
+            "W_trans": "急峻な連結（狭い転移）", "gamma": "緩慢な連結",
+            "mfa_alpha_width": "単純（単一スケール）", "Delta_D": "質量が均等",
+            "S_alpha": "左/対称"}
+
+PALETTE = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948"]
+C_TEXT, C_MUTED, C_GRID = "#0b0b0b", "#52514e", "#d8d8d4"
+
+HIGH = {f: DIR_UP[f] for f in FEAT}
+LOW = {f: DIR_DOWN[f] for f in FEAT}
+
+# 代表画像を見て洗練した日本語類型名・解説（再クラスタ後に埋める）
+DESCRIPTIONS: dict[int, dict] = {}
+
+
+def to_feature_matrix(frame: pd.DataFrame) -> np.ndarray:
+    """DataFrame → クラスタリング用特徴行列（LOG_FEATURES を対数変換）。"""
+    X = frame[FEAT].to_numpy(float).copy()
+    for f in LOG_FEATURES:
+        j = FEAT.index(f)
+        X[:, j] = np.log(np.maximum(X[:, j], 1e-9))
+    return X
+
 
 def embed_image(lat: float, lon: float, size: int = 420) -> str | None:
-    """代表地点のオーバーレイ PNG を縮小して data URI に。無ければ None。"""
     p = IMG_DIR / f"{lat:.4f}_{lon:.4f}.png"
     if not p.exists():
         return None
@@ -44,65 +102,8 @@ def embed_image(lat: float, lon: float, size: int = 420) -> str | None:
     im.save(buf, format="JPEG", quality=82)
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
-FEAT = ["density", "lacunarity_mean", "lacunarity_slope", "r_crit",
-        "mfa_alpha_width", "W_trans", "gamma", "Delta_D", "S_alpha"]
-LABEL = {"density": "d 密度", "lacunarity_mean": "Λ̄ 空隙むら",
-         "lacunarity_slope": "s_Λ 減衰", "r_crit": "r_crit 臨界距離",
-         "mfa_alpha_width": "Δα MFA幅", "W_trans": "W_trans 転移幅",
-         "gamma": "γ 臨界勾配", "Delta_D": "ΔD 次元ギャップ", "S_alpha": "S_α 歪度"}
-SHORT = {"density": "d", "lacunarity_mean": "Λ̄", "lacunarity_slope": "s_Λ",
-         "r_crit": "r_crit", "mfa_alpha_width": "Δα", "W_trans": "W_trans",
-         "gamma": "γ", "Delta_D": "ΔD", "S_alpha": "S_α"}
-
-# dataviz 参照パレット（categorical, light）
-PALETTE = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948"]
-C_TEXT, C_MUTED, C_GRID = "#0b0b0b", "#52514e", "#d8d8d4"
-
-# z-score プロファイルからの日本語ラベル生成ルール（高=+0.7σ超, 低=-0.7σ未満）
-HIGH = {
-    "density": "高密", "lacunarity_mean": "空隙が不均質（むらが大きい）",
-    "lacunarity_slope": "スケール減衰が急", "r_crit": "連結に長距離を要する（分断的）",
-    "mfa_alpha_width": "多重フラクタル性が強い（複雑）", "W_trans": "連結が緩やかに進む（漸進的）",
-    "gamma": "連結が急峻に立ち上がる（相転移的）", "Delta_D": "質量が集中（核的）",
-    "S_alpha": "スペクトルの偏りが強い",
-}
-LOW = {
-    "density": "低密（疎）", "lacunarity_mean": "空隙が均質",
-    "lacunarity_slope": "スケール減衰が緩", "r_crit": "近距離で連結（密結合）",
-    "mfa_alpha_width": "構造が単純（単一スケール的）", "W_trans": "連結が急峻（狭い転移）",
-    "gamma": "連結がマイルド（緩慢）", "Delta_D": "質量が均等に分布",
-    "S_alpha": "スペクトルが対称的",
-}
-
-
-# 代表画像を実際に見て洗練した日本語類型名・解説（rank をキーに機械ドラフトを上書き）。
-DESCRIPTIONS: dict[int, dict] = {
-    1: {"name": "街道集落型（疎・線形連結）",
-        "body": "幹線道路に沿って建物が線状に張り付き、道路から離れた背後は"
-                "広大な空地となる。密度は低い（d≈0.006）が、連結は一本の街道が"
-                "担うため転移は標準的。世界の疎居住で最も多い基本形（最大クラスタ）。"},
-    2: {"name": "分岐集村型（中密・急峻連結）",
-        "body": "枝分かれする在来道路網に建物が付随し、ある距離スケールで一気に"
-                "全体がつながる（γ が +0.8σ と急峻）。中密度ながら連結の立ち上がりが"
-                "鋭い、相転移的な集村。"},
-    3: {"name": "凝集開拓型（中密・漸進連結）",
-        "body": "建物が一角に塊で凝集し、そこから道路が放射・分岐する。連結が広い"
-                "距離範囲にわたって緩やかに進む（W_trans が +1.8σ と際立って大きい）。"
-                "開拓前線や緩斜面の集村に多い。"},
-    4: {"name": "稠密市街型（高密・密連結）",
-        "body": "密な街路網に建物がびっしり詰まった有機的な市街地（d≈0.062 と"
-                "本カタログ最高密）。近距離で全体が連結する、いわゆる「街」。"},
-    5: {"name": "山間散村型（疎・漸進連結）",
-        "body": "建物がごく小さな塊で点在し、間を長い道路が縫う。極めて疎（d≈0.005）で"
-                "建物間距離が大きく、連結は緩慢。山間・内陸の孤立集落。"},
-    6: {"name": "通過地・準無人型（極疎）",
-        "body": "建物がほとんど無く（d≈0）、道路網だけが広大な空地を貫く。峠道や"
-                "通過地の切り出しに相当する外れ値的タイプ（最小クラスタ）。"},
-}
-
 
 def radar(profile: dict, color: str) -> str:
-    """9指標 z-score プロファイルのレーダーチャート → data URI（PNG）。"""
     feats = FEAT
     vals = [profile[f] for f in feats]
     ang = np.linspace(0, 2 * np.pi, len(feats), endpoint=False)
@@ -112,7 +113,6 @@ def radar(profile: dict, color: str) -> str:
     ax.set_ylim(-2, 2)
     ax.plot(ang, vals, color=color, linewidth=2)
     ax.fill(ang, vals, color=color, alpha=0.2)
-    ax.axhline(0, color=C_MUTED, linewidth=0.6)  # z=0 基準円は set_rgrids で
     ax.set_xticks(ang[:-1])
     ax.set_xticklabels([SHORT[f] for f in feats], fontsize=8, color=C_TEXT)
     ax.set_yticks([-1, 0, 1])
@@ -127,7 +127,6 @@ def radar(profile: dict, color: str) -> str:
 
 def scatter_pca(Xz: np.ndarray, labels: np.ndarray, order: list,
                 names: dict[int, str]) -> str:
-    """全地点を PCA 2次元に射影し、クラスタ色で散布図 → data URI。"""
     pca = PCA(n_components=2, random_state=SEED)
     coords = pca.fit_transform(Xz)
     evr = pca.explained_variance_ratio_ * 100
@@ -154,18 +153,11 @@ def scatter_pca(Xz: np.ndarray, labels: np.ndarray, order: list,
 
 
 def describe(profile: dict) -> tuple[str, str]:
-    """z-score プロファイル → (類型名ドラフト, 日本語解説)。
-
-    突出軸（|z|>0.7）を形態的意味に翻訳した機械ドラフト。
-    最終的な類型名は代表画像を見て人手/VLM で洗練する前提。
-    """
     highs = [f for f in FEAT if profile[f] > 0.7]
     lows = [f for f in FEAT if profile[f] < -0.7]
     phrases = [HIGH[f] for f in highs] + [LOW[f] for f in lows]
-    # 密度水準を類型名の頭に
     d = profile["density"]
     dens_word = "高密" if d > 0.7 else ("疎" if d < -0.4 else "中密")
-    # 連結ダイナミクスの性格
     if profile["gamma"] > 0.5:
         conn = "急峻連結型"
     elif profile["W_trans"] > 0.5:
@@ -175,38 +167,47 @@ def describe(profile: dict) -> tuple[str, str]:
     else:
         conn = "標準連結型"
     name = f"{dens_word}・{conn}"
-    if not phrases:
-        body = "9指標すべてが平均付近に収まる、際立った偏りのない標準的な形態。"
-    else:
-        body = "、".join(phrases) + "、という特徴を持つ形態タイプ。"
+    body = ("、".join(phrases) + "、という特徴を持つ形態タイプ。") if phrases else \
+        "9指標すべてが平均付近に収まる、際立った偏りのない標準的な形態。"
     return name, body
+
+
+def legend_table() -> str:
+    """指標の見方表（グループ・記号・意味・単位・大小の向き）。"""
+    rows = ""
+    for f in FEAT:
+        g = GROUP[f]
+        rows += (
+            f'<tr><td><span class="gdot" style="background:{GROUP_COLOR[g]}"></span>{g}</td>'
+            f'<td class="sym">{SHORT[f]}</td><td>{MEANING[f]}</td>'
+            f'<td class="unit">{UNIT[f]}</td>'
+            f'<td class="up">↑ {DIR_UP[f]}</td><td class="dn">↓ {DIR_DOWN[f]}</td></tr>'
+        )
+    return f"""<table class="legend">
+      <thead><tr><th>群</th><th>記号</th><th>意味</th><th>単位</th>
+        <th>値が大きい</th><th>値が小さい</th></tr></thead>
+      <tbody>{rows}</tbody></table>"""
 
 
 def main():
     df = pd.read_csv(VECS)
     df = df[df.density > 1e-5].reset_index(drop=True)
-    X = df[FEAT].to_numpy(float)
-    scaler = StandardScaler().fit(X)
-    Xz = scaler.transform(X)
+    Xt = to_feature_matrix(df)
+    scaler = StandardScaler().fit(Xt)
+    Xz = scaler.transform(Xt)
     km = KMeans(n_clusters=K, random_state=SEED, n_init=10).fit(Xz)
     df["cluster"] = km.labels_
-
     df.to_csv(HERE / "catalog_assignments.csv", index=False)
 
-    # クラスタをサイズ降順に並べ替え
     order = df["cluster"].value_counts().index.tolist()
-
-    names = {}
-    cards = []
+    names, cards = {}, []
     for rank, cid in enumerate(order, 1):
         sub = df[df.cluster == cid]
-        prof = {f: float(scaler.transform(sub[FEAT].mean().to_frame().T)[0][i])
+        prof = {f: float(scaler.transform(to_feature_matrix(sub).mean(axis=0, keepdims=True))[0][i])
                 for i, f in enumerate(FEAT)}
-        # 代表地点: クラスタ中心（z空間）に最も近い5地点
         center = km.cluster_centers_[cid]
-        dist = np.linalg.norm(scaler.transform(sub[FEAT].to_numpy(float)) - center, axis=1)
+        dist = np.linalg.norm(scaler.transform(to_feature_matrix(sub)) - center, axis=1)
         reps = sub.iloc[np.argsort(dist)[:5]]
-        # 日本語類型名・解説: 代表画像を見て洗練した手書き版があれば優先、なければ機械ドラフト
         if rank in DESCRIPTIONS:
             name, body = DESCRIPTIONS[rank]["name"], DESCRIPTIONS[rank]["body"]
         else:
@@ -214,20 +215,17 @@ def main():
         names[cid] = name
         regions = sub["subregion"].value_counts().head(3)
         color = PALETTE[rank - 1]
-        # 代表画像（中心最近傍の先頭3地点）
         gallery = "".join(
             f'<figure><img src="{uri}"><figcaption>{r["lat"]:.3f}, {r["lon"]:.3f}</figcaption></figure>'
             for _, r in reps.head(3).iterrows()
             if (uri := embed_image(r["lat"], r["lon"]))
         )
-
         rep_rows = "".join(
-            f"<tr><td>{r['lat']:.3f}, {r['lon']:.3f}</td>"
-            f"<td>{r['subregion']}</td>"
+            f"<tr><td>{r['lat']:.3f}, {r['lon']:.3f}</td><td>{r['subregion']}</td>"
             f"<td>{r['density']:.4f}</td><td>{r['lacunarity_mean']:.1f}</td>"
             f"<td>{r['lacunarity_slope']:.3f}</td><td>{r['r_crit']:.0f}</td>"
-            f"<td>{r['mfa_alpha_width']:.3f}</td><td>{r['W_trans']:.0f}</td>"
-            f"<td>{r['gamma']:.4f}</td><td>{r['Delta_D']:.3f}</td>"
+            f"<td>{r['W_trans']:.0f}</td><td>{r['gamma']:.4f}</td>"
+            f"<td>{r['mfa_alpha_width']:.3f}</td><td>{r['Delta_D']:.3f}</td>"
             f"<td>{r['S_alpha']:.3f}</td></tr>"
             for _, r in reps.iterrows()
         )
@@ -237,56 +235,65 @@ def main():
             for f in sorted(FEAT, key=lambda f: -abs(prof[f]))[:4]
         )
         reg_txt = " / ".join(f"{k}（{v}）" for k, v in regions.items())
-
         cards.append(f"""
         <section class="card">
           <div class="card-head" style="border-color:{color}">
             <span class="rank" style="background:{color}">{rank}</span>
-            <div>
-              <h2>{name}</h2>
-              <div class="meta">{len(sub):,} 地点（全体の {len(sub)/len(df)*100:.1f}%）</div>
-            </div>
+            <div><h2>{name}</h2>
+              <div class="meta">{len(sub):,} 地点（全体の {len(sub)/len(df)*100:.1f}%）</div></div>
           </div>
           <div class="card-body">
             <img class="radar" src="{radar(prof, color)}" alt="radar">
-            <div class="desc">
-              <p>{body}</p>
+            <div class="desc"><p>{body}</p>
               <div class="badges">{badges}</div>
-              <div class="regions"><b>主な地域:</b> {reg_txt}</div>
-            </div>
+              <div class="regions"><b>主な地域:</b> {reg_txt}</div></div>
           </div>
           <div class="gallery">{gallery}</div>
           <div class="table-wrap"><table class="reps">
             <thead><tr><th>lat, lon</th><th>地域</th>
-              <th>d</th><th>Λ̄</th><th>s_Λ</th><th>r_crit</th><th>Δα</th>
-              <th>W_trans</th><th>γ</th><th>ΔD</th><th>S_α</th></tr></thead>
-            <tbody>{rep_rows}</tbody>
-          </table></div>
+              <th>d</th><th>Λ̄</th><th>s_Λ</th><th>r_crit</th><th>W_trans</th>
+              <th>γ</th><th>Δα</th><th>ΔD</th><th>S_α</th></tr></thead>
+            <tbody>{rep_rows}</tbody></table></div>
         </section>""")
 
     html = f"""<div class="wrap">
       <header>
-        <h1>都市形態カタログ（OS指標・試作）</h1>
+        <h1>都市形態カタログ（OS指標）</h1>
         <p class="sub">global_v2 全球サンプル {len(df):,} 地点を 9 次元 Open-Sparsity 指標で
-        教師なしクラスタリング（KMeans, k={K}）。各タイプの指標プロファイルを
-        レーダーで、突出軸をバッジで示す。類型名・解説は各タイプの代表画像を
-        確認して記述した。</p>
+        教師なしクラスタリング（KMeans, k={K}）。指標は手法グループ順（密度→ラキュナリティ
+        →パーコレーション→MFA）に並べ、Λ̄ は対数変換してからクラスタリングした。</p>
       </header>
+      <section class="legend-box">
+        <h3>指標の見方</h3>
+        {legend_table()}
+      </section>
       <div class="overview">
         <img src="{scatter_pca(Xz, km.labels_.astype(int), order, names)}" alt="PCA散布図">
       </div>
       {"".join(cards)}
-      <footer>OS指標 = [d 密度, Λ̄ 空隙むら, s_Λ 減衰, r_crit 臨界距離,
-      Δα MFA幅, W_trans 転移幅, γ 臨界勾配, ΔD 次元ギャップ, S_α 歪度]。
-      レーダーは各指標の z-score（全体平均=0, ±1σ 目盛）。代表地点表の値は生の実測値。</footer>
+      <footer>レーダーは各指標の z-score（全体平均=0, ±1σ 目盛、Λ̄ は対数後）。
+      代表地点表の値は生の実測値（Λ̄ は対数前）。</footer>
     </div>
     <style>
       .wrap {{ max-width: 1000px; margin: 0 auto; font-family: system-ui, sans-serif;
               color: {C_TEXT}; line-height: 1.6; }}
       header h1 {{ margin-bottom: 4px; }}
       .sub {{ color: {C_MUTED}; font-size: 14px; }}
-      .card {{ border: 1px solid {C_GRID}; border-radius: 10px; margin: 18px 0;
-               overflow: hidden; }}
+      .legend-box {{ border: 1px solid {C_GRID}; border-radius: 10px; padding: 12px 16px;
+                     margin: 16px 0; background: #fafaf8; }}
+      .legend-box h3 {{ margin: 0 0 8px; font-size: 15px; }}
+      table.legend {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+      table.legend th {{ text-align: left; color: {C_MUTED}; font-weight: 600;
+                         padding: 4px 8px; border-bottom: 1px solid {C_GRID}; }}
+      table.legend td {{ padding: 4px 8px; border-bottom: 1px solid #eee; vertical-align: top; }}
+      table.legend .sym {{ font-family: ui-monospace, monospace; font-weight: 700; }}
+      table.legend .unit {{ color: {C_MUTED}; font-size: 12px; }}
+      table.legend .up {{ color: #1a6; font-size: 12px; }}
+      table.legend .dn {{ color: #a63; font-size: 12px; }}
+      .gdot {{ display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+               margin-right: 5px; vertical-align: middle; }}
+      .overview img {{ width: 100%; max-width: 780px; display: block; margin: 8px auto 4px; }}
+      .card {{ border: 1px solid {C_GRID}; border-radius: 10px; margin: 18px 0; overflow: hidden; }}
       .card-head {{ display: flex; align-items: center; gap: 12px; padding: 12px 16px;
                     border-left: 6px solid; background: #fafaf8; }}
       .card-head h2 {{ margin: 0; font-size: 19px; }}
@@ -305,29 +312,33 @@ def main():
                       border: 1px solid {C_GRID}; border-radius: 6px; display: block; }}
       .gallery figcaption {{ font-size: 11px; color: {C_MUTED}; margin-top: 3px;
                              font-variant-numeric: tabular-nums; }}
-      .overview img {{ width: 100%; max-width: 780px; display: block; margin: 8px auto 4px; }}
       .table-wrap {{ overflow-x: auto; }}
       table.reps {{ width: 100%; border-collapse: collapse; font-size: 12.5px;
                     white-space: nowrap; font-variant-numeric: tabular-nums; }}
-      table.reps th, table.reps td {{ text-align: left; padding: 6px 16px;
+      table.reps th, table.reps td {{ text-align: left; padding: 6px 12px;
                                        border-top: 1px solid {C_GRID}; }}
       table.reps th {{ color: {C_MUTED}; font-weight: 600; }}
       footer {{ color: {C_MUTED}; font-size: 12px; margin-top: 24px; }}
       @media (prefers-color-scheme: dark) {{
-        .wrap {{ color: #eee; }} .card-head {{ background: #1e1e1c; }}
-        .card {{ border-color: #333; }} table.reps th, table.reps td {{ border-color:#333; }}
+        .wrap {{ color: #eee; }} .card-head, .legend-box {{ background: #1e1e1c; }}
+        .card, .legend-box {{ border-color: #333; }}
+        table.reps th, table.reps td {{ border-color: #333; }}
+        table.legend td {{ border-color: #2a2a28; }}
       }}
     </style>"""
     (HERE / "catalog.html").write_text(html, encoding="utf-8")
-    print(f"カタログ生成: {HERE/'catalog.html'} ({K} タイプ, {len(df):,} 地点)")
+    print(f"カタログ生成: {K} タイプ, {len(df):,} 地点")
     for rank, cid in enumerate(order, 1):
         sub = df[df.cluster == cid]
-        prof = {f: float(scaler.transform(sub[FEAT].mean().to_frame().T)[0][i])
+        prof = {f: float(scaler.transform(to_feature_matrix(sub).mean(axis=0, keepdims=True))[0][i])
                 for i, f in enumerate(FEAT)}
         name, _ = describe(prof)
-        print(f"  {rank}. {name}: {len(sub):,}地点 "
-              f"(d={sub.density.mean():.4f} γz={prof['gamma']:+.1f} "
-              f"W_trans z={prof['W_trans']:+.1f})")
+        reps = sub.iloc[np.argsort(np.linalg.norm(
+            scaler.transform(to_feature_matrix(sub)) - km.cluster_centers_[cid], axis=1))[:3]]
+        print(f"  {rank}. {name}: {len(sub):,}地点 d={sub.density.mean():.4f} "
+              f"Λ̄={sub.lacunarity_mean.median():.1f} γz={prof['gamma']:+.1f} Wz={prof['W_trans']:+.1f}")
+        for _, r in reps.iterrows():
+            print(f"       rep {r['lat']:.4f},{r['lon']:.4f}")
 
 
 if __name__ == "__main__":
