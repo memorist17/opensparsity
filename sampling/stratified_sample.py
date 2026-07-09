@@ -33,7 +33,9 @@ def main():
     args = ap.parse_args()
     rng = np.random.default_rng(args.seed)
 
-    df = pd.read_csv(args.candidates)
+    # keep_default_na=False: pandasのデフォルトNA判定はNamibiaのISO2コード"NA"を
+    # 欠損値と誤認するため、countryを含むCSVでは無効化する（実際に2026-07-10に踏んだ）
+    df = pd.read_csv(args.candidates, keep_default_na=False, na_values=[""])
     print(f"入力（国・サブリージョン割当済み候補点）: {len(df):,} 件")
 
     # クラスごとの全体抽出率（extract_candidates.pyでクラス単位一定のはず）
