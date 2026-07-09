@@ -1,7 +1,18 @@
-# Next Steps（2026-07-09時点）
+# Next Steps（2026-07-10時点）
 
 2026-07-08セッションで exp01〜exp03 まで実施し、文書化が未完了のまま終了した。
-その文書化（本ファイルを含む）を2026-07-09に完遂。以下は次にやるべきことの優先順。
+その文書化を2026-07-09に完遂。2026-07-10、GitHubに新規リポジトリ作成・push、および
+密度系指標3種（building_count_density / building_footprint_mean_m2・median_m2 /
+road_length_density）を`pipeline.py`に追加（[technical_notes.md](docs/technical_notes.md) §2）。
+以下は次にやるべきことの優先順。
+
+## 0. 用語の整理（低コスト・査読対策）
+
+- [ ] Fleischmann Index-of-Elements命名で、OS9指標＋新規3指標をIndex/Elementの形で
+      `related_work_and_storyline.md`に書き直す。Λ̄・s_Λ・Δα・ΔD・S_αはSpatial
+      distributionカテゴリ、W_trans/γはConnectivityカテゴリに入り、いずれも
+      Fleischmannが「文献で手薄」と指摘したカテゴリに一致する——この対応関係を
+      ポジショニングの根拠として明記する
 
 ## 1. exp02/exp03の詰め（すぐできる・低コスト）
 

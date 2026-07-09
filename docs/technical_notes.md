@@ -21,6 +21,20 @@
 
 - **パーコレーションは道路ネットワーク媒介**——著者の独自性であり変更禁止
 - **r_crit の正定義は論文表1の `argmax dG/dr`**（旧実装の `G=0.5交差`は不使用、fb7a4ea/fc00eefで修正）
+- **`density` は Fleischmann Index-of-Elements 命名で "Covered Area Ratio (GSI)"**——建物footprintの
+  画素占有率であり、建物数密度とは別物（[Fleischmann, Romice & Porta 2020, EPB](https://journals.sagepub.com/doi/10.1177/2399808320910444)
+  のIndex/Element分離に準拠。同記事の平易版: https://martinfleischmann.net/confused-terminology-in-urban-morphology/）
+- **2026-07-10、密度系の追加指標3種を`pipeline.py`に追加**（既存の`density`はそのまま維持、値は変更なし）:
+  - `building_count_density`（建物数/km²）
+  - `building_footprint_mean_m2` / `building_footprint_median_m2`（建物footprintの平均・中央値面積）
+  - `road_length_density`（道路網長km/km²、Spacemateの N に相当）
+  - **Why**: `density`(GSI)だけでは「大きい建物少数」と「小さい建物多数」を区別できない。
+    いずれもフェッチ済みgeometryの集計のみで追加コストほぼゼロ（既存の10,050地点=exp01の
+    データセットには無い。134万地点の本番からは全地点で取得される）
+  - **FSI（容積率）は採用しない**: Overtureの`height`/`num_floors`欠損率が高すぎる
+    （横浜での実測: height 0.8%, num_floors 3.9%。global-scaleでは使い物にならない）
+  - 実測値（横浜, density=0.2176）: building_count_density=1422.5/km², footprint_mean=153.1m²,
+    footprint_median=75.9m²（平均>中央値=右に歪んでいる=大きい建物が少数混在）, road_length_density=33.4km/km²
 
 ## 3. 高速化（07-08実施）
 

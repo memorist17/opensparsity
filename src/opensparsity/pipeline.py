@@ -94,8 +94,25 @@ def process_location(
     r_crit = find_r_crit_max_slope(perc_df)
     d_crit50 = perc.find_percolation_threshold(perc_df, 0.5)
 
+    # 密度系の追加指標（Fleischmann Index-of-Elements: いずれも Intensity カテゴリ）。
+    # "density"（Covered Area Ratio/GSI）だけでは建物数・建物サイズ・道路網の情報が
+    # 潰れるため、追加コストがほぼゼロ（既にフェッチ済みの geometry の集計のみ）な
+    # 3指標を常時記録する。height/num_floors は Overture での欠損率が高すぎるため
+    # FSI（容積率）は採用しない（横浜での実測: height 0.8%, num_floors 3.9%）。
+    area_km2 = (2 * half / 1000.0) ** 2
+    footprint_areas_m2 = buildings.geometry.area if len(buildings) else None
+    road_length_km = float(roads.geometry.length.sum()) / 1000.0 if len(roads) else 0.0
+
     metrics = {
         "density": float(np.mean(b_raster)),
+        "building_count_density": len(buildings) / area_km2,
+        "building_footprint_mean_m2": (
+            float(footprint_areas_m2.mean()) if footprint_areas_m2 is not None else float("nan")
+        ),
+        "building_footprint_median_m2": (
+            float(footprint_areas_m2.median()) if footprint_areas_m2 is not None else float("nan")
+        ),
+        "road_length_density": road_length_km / area_km2,
         "lacunarity_mean": float(lac_df["lambda"].mean()),
         "lacunarity_slope": float(lac.fit_power_law(lac_df)["beta"]),
         "mfa_alpha_width": float(mfa_df["alpha"].max() - mfa_df["alpha"].min()),

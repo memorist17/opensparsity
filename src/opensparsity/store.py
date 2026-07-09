@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS locations (
     beta REAL,
     gamma REAL,
     S_alpha REAL,
+    -- 密度系の追加指標（density=GSI 単独では潰れる情報を補う。Intensity カテゴリ）
+    building_count_density REAL,       -- 建物数 / km²
+    building_footprint_mean_m2 REAL,   -- 建物footprintの平均面積
+    building_footprint_median_m2 REAL, -- 建物footprintの中央値面積
+    road_length_density REAL,          -- 道路網長 (km) / km²（Spacemate の N）
     PRIMARY KEY (lat, lon)
 );
 CREATE TABLE IF NOT EXISTS curves (
@@ -62,10 +67,17 @@ class ResultStore:
         self.conn.execute("PRAGMA journal_mode=WAL;")
         self.conn.executescript(SCHEMA)
         # 旧スキーマからのマイグレーション（列が無ければ追加）
-        try:
-            self.conn.execute("ALTER TABLE locations ADD COLUMN r_crit REAL")
-        except sqlite3.OperationalError:
-            pass
+        for ddl in (
+            "ALTER TABLE locations ADD COLUMN r_crit REAL",
+            "ALTER TABLE locations ADD COLUMN building_count_density REAL",
+            "ALTER TABLE locations ADD COLUMN building_footprint_mean_m2 REAL",
+            "ALTER TABLE locations ADD COLUMN building_footprint_median_m2 REAL",
+            "ALTER TABLE locations ADD COLUMN road_length_density REAL",
+        ):
+            try:
+                self.conn.execute(ddl)
+            except sqlite3.OperationalError:
+                pass
 
     # --- 再開サポート ---
     def done_keys(self) -> set[tuple[float, float]]:
