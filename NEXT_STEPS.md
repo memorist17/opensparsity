@@ -24,17 +24,23 @@ road_length_density）を`pipeline.py`に追加（[technical_notes.md](docs/tech
 - [ ] exp03: KMeans K=6の妥当性検証（エルボー法/シルエット係数、K=5・7との比較）
       （[exp03 REPORT.md](experiments/exp03_catalog/REPORT.md) §4）
 
-## 2. B1全球センサス（未着手・要GO）
+## 2. B1全球センサス → DEGURBA層化サンプリングに置き換え（設計完了、実行はGO待ち）
 
-`docs/related_work_and_storyline.md` では「進行中（134万地点）」と記述しているが、
-実際には**地点リストの生成・実行のいずれも未着手**。着手する場合は以下が必要:
+`docs/related_work_and_storyline.md`の「進行中（134万地点）」は根拠のない見積もりだったと
+判明（2026-07-10）。母集団定義をDEGURBA（人口密度の国際標準分類、Low/Very low density rural）
+に切り替え、22サブリージョン×2クラス=44層・層あたり600〜800点・総計約3万点の層化サンプリング
+設計に確定した。詳細: [experiments/exp04_degurba_census/README.md](experiments/exp04_degurba_census/README.md)、
+[sampling/README.md](sampling/README.md)。
 
-- [ ] WSF2019ベースでB1下限（建物密度0.005相当）以上の全球地点リストを生成する設計を決める
-      （global_v2と同じ層化サンプリングか、それとも本当に「サンプリング不要の全数」か）
+- [x] GHS-SMODラスタ入手・DEGURBA定義確認・既存exp01地点の分布集計
+- [x] 候補セル数の実測（2km格子でclass11=3,392万・class12=154万セル、枯渇リスクなし確認）
+- [x] `sampling/`パイプライン実装（候補抽出→国/サブリージョン判定→層化抽出→design_weight算出）
+- [ ] `sampling/final_sample.csv`の生成（実行中/実行待ち、進捗はセッションログ参照）
+- [ ] 生成された候補点リストの目視レビュー（層別レポートで`pool_exhausted`層を確認）
 - [ ] mini/WSL/Macの3台構成での分割実行計画（`config.yaml`の`n_jobs`調整含む、
       [technical_notes.md](docs/technical_notes.md) §4）
-- [ ] **実行前に必ずユーザーの明示的なGOを得る**（[technical_notes.md](docs/technical_notes.md) §5、
-      規模・時間・ディスク消費が大きいため）
+- [ ] **本番`ops run`（約3万点、3台で約1.6日）は必ずユーザーの明示的なGOを得てから実行**
+      （[technical_notes.md](docs/technical_notes.md) §5）
 
 ## 3. DEGURBA層別再現（査読対策）
 
