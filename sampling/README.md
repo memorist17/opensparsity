@@ -63,8 +63,35 @@ cd opensparsity
     --out sampling/final_sample.csv --n-per-stratum 700 --seed 42
 ```
 
-`final_sample.csv`の(lat, lon)を`ops run --locations`用のYAML/CSVに変換すれば、
-そのまま`opensparsity`の本番パイプラインに投入できる（変換スクリプトは未実装、次のステップ）。
+`final_sample.csv`は`name`/`lat`/`lon`列を含むため、変換不要でそのまま
+`ops run --locations sampling/final_sample.csv --out results/` に投入できる
+（`_load_locations`が読めることは動作確認済み）。
+
+## 結果（2026-07-10, seed=42）
+
+- 候補抽出: class 11（very_low_density_rural）30万件・class 12（low_density_rural）30万件
+  を無作為抽出（全体は2km格子でそれぞれ3,392万・154万セル）
+- 国/サブリージョン判定: 60万件中56.3万件（93.8%）が22サブリージョンに割当成功。
+  漏れの大半はAQ（南極、サブリージョン無し、想定内）
+- 層化抽出: **総サンプル27,710点**。44層中39層は目標700点を達成、
+  **5層は候補プール不足でそのまま全部使用**（Micronesia low=21・very_low=3、
+  Polynesia low=23・very_low=6、Caribbean very_low=357）——太平洋の小島嶼国は
+  そもそも土地面積が小さく、707点は無理に集められない。global_v2の
+  `n_strata_all_pop`と同じ現象で、想定内・対応済み
+- 出力: [final_sample.csv](final_sample.csv)（27,710行）、
+  [final_sample_stratum_report.csv](final_sample_stratum_report.csv)（層別内訳）
+
+## 技術的なつまずき（後で同じことをする人向け）
+
+- DuckDB spatialの`ST_Contains`結合はインデックス無しだと60万点×219国ポリゴンで
+  **30分以上かかっても終わらなかった**（途中でkill）。原因は2つ:
+  1. 国単位に`ST_Union_Agg`で結合していた（複雑な海岸線の島嶼国でGEOS演算が非常に重い）
+     → 行単位のまま結合し`QUALIFY ROW_NUMBER()...=1`で重複除去する方式に変更
+  2. RTreeインデックスを使っていなかった → `CREATE INDEX ... USING RTREE (geom)`で解決。
+     ただし**`CAST(geometry AS GEOMETRY)`をしないと「RTree indexes can only be created
+     over GEOMETRY columns」エラーになる**（Overture divisionsのgeometry列は
+     `GEOMETRY('OGC:CRS84')`という型パラメータ付きで、素のGEOMETRY型と区別される）
+  - 修正後は数十秒で完了した
 
 ## 本番実行について
 
