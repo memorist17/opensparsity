@@ -39,23 +39,29 @@ def main():
     con.execute("SET s3_region='us-west-2';")
     con.register("candidates", df)
 
-    # 国ポリゴン（陸地のみ、重複除去のため国コードでGROUP BY→ST_Union）
+    # 国ポリゴン（陸地のみ）。ST_Union_Aggによる国単位の結合は複雑な海岸線で非常に重いため
+    # 行わない——1国が複数行（島嶼国等）でも、点は高々1行にしか属さないのでそのまま結合できる
     con.execute(f"""
         CREATE TEMP TABLE countries AS
-        SELECT country, ST_Union_Agg(geometry) AS geom
+        SELECT country, CAST(geometry AS GEOMETRY) AS geom
         FROM read_parquet('{DIVISIONS_PATH}')
         WHERE subtype = 'country' AND is_land = true AND country IS NOT NULL
-        GROUP BY country
     """)
-    n_countries = con.execute("SELECT COUNT(*) FROM countries").fetchone()[0]
-    print(f"国ポリゴン: {n_countries} 件取得")
+    n_countries = con.execute(
+        "SELECT COUNT(*), COUNT(DISTINCT country) FROM countries"
+    ).fetchone()
+    print(f"国ポリゴン行: {n_countries[0]} 件（{n_countries[1]} 国）取得")
 
-    print("空間結合中（候補点 in 国ポリゴン）...")
+    print("空間インデックス作成中...")
+    con.execute("CREATE INDEX country_geom_idx ON countries USING RTREE (geom)")
+
+    print("空間結合中（候補点 in 国ポリゴン、RTreeインデックス使用）...")
     joined = con.execute("""
         SELECT c.*, co.country
         FROM candidates c
         LEFT JOIN countries co
           ON ST_Contains(co.geom, ST_Point(c.lon, c.lat))
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY c.lat, c.lon ORDER BY co.country) = 1
     """).fetchdf()
 
     n_matched = joined["country"].notna().sum()

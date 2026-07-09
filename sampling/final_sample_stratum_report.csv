@@ -1,0 +1,45 @@
+subregion,degurba_class,n_candidates_in_subsample,est_total_cells,n_sampled,pool_exhausted
+Australia and New Zealand,low_density_rural,985,5066,700,False
+Caribbean,low_density_rural,1318,6778,700,False
+Central America,low_density_rural,7882,40536,700,False
+Central Asia,low_density_rural,2668,13721,700,False
+Eastern Africa,low_density_rural,36584,188145,700,False
+Eastern Asia,low_density_rural,48953,251757,700,False
+Eastern Europe,low_density_rural,18444,94854,700,False
+Melanesia,low_density_rural,1199,6166,700,False
+Micronesia,low_density_rural,21,108,21,True
+Middle Africa,low_density_rural,9132,46964,700,False
+Northern Africa,low_density_rural,6520,33531,700,False
+Northern America,low_density_rural,21758,111898,700,False
+Northern Europe,low_density_rural,4607,23693,700,False
+Polynesia,low_density_rural,23,118,23,True
+South America,low_density_rural,15913,81838,700,False
+South-Eastern Asia,low_density_rural,22986,118213,700,False
+Southern Africa,low_density_rural,3712,19090,700,False
+Southern Asia,low_density_rural,46195,237573,700,False
+Southern Europe,low_density_rural,7674,39466,700,False
+Western Africa,low_density_rural,19698,101303,700,False
+Western Asia,low_density_rural,8087,41590,700,False
+Western Europe,low_density_rural,12597,64784,700,False
+Australia and New Zealand,very_low_density_rural,17437,1971572,700,False
+Caribbean,very_low_density_rural,357,40365,357,True
+Central America,very_low_density_rural,4949,559575,700,False
+Central Asia,very_low_density_rural,8405,950339,700,False
+Eastern Africa,very_low_density_rural,12774,1444335,700,False
+Eastern Asia,very_low_density_rural,21321,2410730,700,False
+Eastern Europe,very_low_density_rural,39137,4425155,700,False
+Melanesia,very_low_density_rural,1056,119400,700,False
+Micronesia,very_low_density_rural,3,339,3,True
+Middle Africa,very_low_density_rural,13952,1577529,700,False
+Northern Africa,very_low_density_rural,16482,1863592,700,False
+Northern America,very_low_density_rural,39462,4461902,700,False
+Northern Europe,very_low_density_rural,3357,379570,700,False
+Polynesia,very_low_density_rural,6,678,6,True
+South America,very_low_density_rural,37901,4285402,700,False
+South-Eastern Asia,very_low_density_rural,8010,905677,700,False
+Southern Africa,very_low_density_rural,5661,640080,700,False
+Southern Asia,very_low_density_rural,10098,1141764,700,False
+Southern Europe,very_low_density_rural,2458,277922,700,False
+Western Africa,very_low_density_rural,11994,1356141,700,False
+Western Asia,very_low_density_rural,9254,1046334,700,False
+Western Europe,very_low_density_rural,1611,182153,700,False

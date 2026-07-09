@@ -68,6 +68,15 @@ def main():
     final = pd.concat(picked_rows, ignore_index=True)
     report = pd.DataFrame(stratum_report).sort_values(["degurba_class", "subregion"])
 
+    # ops run --locations で使うためのname列（読みやすさ用、一意性を担保）
+    class_short = {"very_low_density_rural": "vlow", "low_density_rural": "low"}
+    subregion_slug = final["subregion"].str.lower().str.replace(r"[^a-z]+", "_", regex=True)
+    final = final.reset_index(drop=True)
+    final.insert(0, "name", [
+        f"degurba_{subregion_slug.iloc[i]}_{class_short[final['degurba_class'].iloc[i]]}_{i}"
+        for i in range(len(final))
+    ])
+
     args.out.parent.mkdir(parents=True, exist_ok=True)
     final.to_csv(args.out, index=False)
     report_path = args.out.parent / f"{args.out.stem}_stratum_report.csv"
