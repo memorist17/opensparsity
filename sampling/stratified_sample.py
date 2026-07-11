@@ -7,9 +7,13 @@
 - design_weight: Horvitz-Thompson型。
     層の2km格子全体セル数（推定） = 層内の候補点数 / 全体抽出率（extract_candidates.pyで
     記録したsample_fraction、クラスごとに一定）
-    design_weight = (層の推定全体セル数 / 層から実際に抽出した点数) * cos(lat)
-  cos(lat)項は、緯度が高いほど1km格子1マスが表す実面積が小さくなる歪みを補正する
-  （global_v2のdesign_weight_formulaと同じ考え方）。
+    design_weight = 層の推定全体セル数 / 層から実際に抽出した点数
+  【2026-07-12修正】当初はglobal_v2に倣い cos(lat) を掛けていたが誤り。cos(lat)補正は
+  経緯度グリッド（緯度で1マスの実面積が縮む）用で、GHS-SMODはMollweide等積図法
+  （ESRI:54009、全セル等面積）なので不要。掛けると高緯度の点を不当に軽くする歪みが
+  逆に入る。層内の包含確率は一様なので重みは層内一定が正しい。
+  （2026-07-10生成のfinal_sample.csvのdesign_weight列は旧式=cos(lat)入りの非推奨値。
+   本番実行後に実現サンプルへ重みを再計算するため、分析ではそちらを使うこと）
 
 使い方:
     .venv/bin/python sampling/stratified_sample.py \
@@ -54,9 +58,8 @@ def main():
         frac = sample_fraction_by_class.loc[cls]
         # 層の推定全体セル数(2km格子) = 層内候補点数 / 全体抽出率
         est_total_cells_in_stratum = n_available / frac
-        picked["design_weight"] = (
-            (est_total_cells_in_stratum / n_target) * np.cos(np.radians(picked["lat"]))
-        )
+        # Mollweide等積格子なので層内の包含確率は一様 → 重みは層内一定（cos(lat)不要）
+        picked["design_weight"] = est_total_cells_in_stratum / n_target
         picked_rows.append(picked)
 
         stratum_report.append({

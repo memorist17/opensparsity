@@ -110,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "merge":
         store = ResultStore(Path(args.out) / "results.db")
         n0 = store.conn.execute("SELECT count(*) FROM locations").fetchone()[0]
-        store.conn.execute(f"ATTACH '{args.src_db}' AS src (READ_ONLY)")
+        store.conn.execute(f"ATTACH DATABASE 'file:{args.src_db}?mode=ro' AS src")
         with store.conn:
             store.conn.execute("INSERT OR REPLACE INTO locations SELECT * FROM src.locations")
             store.conn.execute("INSERT OR REPLACE INTO curves SELECT * FROM src.curves")
