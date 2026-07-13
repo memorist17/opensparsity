@@ -35,37 +35,73 @@ def img_uri(lat, lon):
         return None
     return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
 
-# --- PCA散布図SVG（サブクラスタ色分け、外れクラスタは別マーカー） ---
+# --- 散布図SVG（PCA / t-SNE / UMAP、サブクラスタ色分け・外れ群は正方形） ---
 rng = np.random.default_rng(42)
 bulk = df[df["cluster"] == 0]
-keep = bulk.iloc[rng.choice(len(bulk), 2000, replace=False)]
+keep = bulk.iloc[rng.choice(len(bulk), 3000, replace=False)]
 outl = df[df["cluster"] != 0]
-plot = pd.concat([keep, outl])
-x0, x1 = plot["pc1"].quantile([0.001, 0.999])
-y0, y1 = plot["pc2"].quantile([0.001, 0.999])
+plot_df = pd.concat([keep, outl])
 W, H, PAD = 640, 480, 36
-def sx(v): return PAD + (v - x0) / (x1 - x0) * (W - 2 * PAD)
-def sy(v): return H - PAD - (v - y0) / (y1 - y0) * (H - 2 * PAD)
 
-pts = []
-for _, r in keep.iterrows():
-    c = int(r["subcluster"])
-    pts.append(f'<circle cx="{sx(r.pc1):.1f}" cy="{sy(r.pc2):.1f}" r="2.4" '
-               f'class="p s{c}" opacity="0.55"/>')
-for _, r in outl.iterrows():
-    m = int(r["cluster"])
-    if not (x0 <= r.pc1 <= x1 and y0 <= r.pc2 <= y1):
-        continue
-    pts.append(f'<rect x="{sx(r.pc1)-2.6:.1f}" y="{sy(r.pc2)-2.6:.1f}" '
-               f'width="5.2" height="5.2" class="p m{m}" opacity="0.85"/>')
-ev = main["pca_variance"]
-scatter_svg = f'''<svg viewBox="0 0 {W} {H}" role="img" aria-label="PCA scatter of clusters">
+def scatter_svg_for(xc, yc, xlabel, ylabel, title):
+    x0, x1 = plot_df[xc].quantile([0.001, 0.999])
+    y0, y1 = plot_df[yc].quantile([0.001, 0.999])
+    def sx(v): return PAD + (v - x0) / (x1 - x0) * (W - 2 * PAD)
+    def sy(v): return H - PAD - (v - y0) / (y1 - y0) * (H - 2 * PAD)
+    pts = []
+    for _, r in keep.iterrows():
+        if not (x0 <= r[xc] <= x1 and y0 <= r[yc] <= y1):
+            continue
+        pts.append(f'<circle cx="{sx(r[xc]):.1f}" cy="{sy(r[yc]):.1f}" r="2.2" '
+                   f'class="p s{int(r["subcluster"])}" opacity="0.55"/>')
+    for _, r in outl.iterrows():
+        if not (x0 <= r[xc] <= x1 and y0 <= r[yc] <= y1):
+            continue
+        pts.append(f'<rect x="{sx(r[xc])-2.6:.1f}" y="{sy(r[yc])-2.6:.1f}" '
+                   f'width="5.2" height="5.2" class="p m{int(r["cluster"])}" opacity="0.85"/>')
+    return f'''<svg viewBox="0 0 {W} {H}" role="img" aria-label="{title}">
 <line x1="{PAD}" y1="{H-PAD}" x2="{W-PAD}" y2="{H-PAD}" class="axis"/>
 <line x1="{PAD}" y1="{PAD}" x2="{PAD}" y2="{H-PAD}" class="axis"/>
-<text x="{W/2}" y="{H-8}" class="axlabel" text-anchor="middle">PC1 ({ev[0]:.0%} var)</text>
-<text x="12" y="{H/2}" class="axlabel" text-anchor="middle" transform="rotate(-90 12 {H/2})">PC2 ({ev[1]:.0%} var)</text>
+<text x="{W/2}" y="{H-8}" class="axlabel" text-anchor="middle">{xlabel}</text>
+<text x="12" y="{H/2}" class="axlabel" text-anchor="middle" transform="rotate(-90 12 {H/2})">{ylabel}</text>
 {"".join(pts)}
 </svg>'''
+
+ev = main["pca_variance"]
+has_embed = "tsne1" in df.columns
+tabs = [("pca", "PCA",
+         scatter_svg_for("pc1", "pc2", f"PC1 ({ev[0]:.0%} var) — 疎密と転移の鋭さ",
+                         f"PC2 ({ev[1]:.0%} var) — 転移の長距離性", "PCA projection"),
+         f"線形射影・分散カバー{ev[0]+ev[1]:.0%}。PC1はγ・s_Λ(+)/Δα・d(−)、"
+         "PC2はW_trans・S_α・r_crit(+)が主成分")]
+if has_embed:
+    tabs.append(("tsne", "t-SNE",
+                 scatter_svg_for("tsne1", "tsne2", "t-SNE 1", "t-SNE 2", "t-SNE embedding"),
+                 "非線形・局所近傍保存（perplexity=50、PCA初期化）。"
+                 "軸自体に意味はなく、近さだけを読む"))
+    tabs.append(("umap", "UMAP",
+                 scatter_svg_for("umap1", "umap2", "UMAP 1", "UMAP 2", "UMAP embedding"),
+                 "非線形・局所+大域バランス（n_neighbors=30, min_dist=0.1）。"
+                 "軸自体に意味はなく、近さと分離だけを読む"))
+
+tab_radios = "".join(
+    f'<input type="radio" name="proj" id="tab-{k}" {"checked" if i==0 else ""}/>'
+    for i, (k, *_ ) in enumerate(tabs))
+tab_labels = "".join(
+    f'<label for="tab-{k}">{name}</label>' for k, name, *_ in tabs)
+tab_panels = "".join(
+    f'<div class="panel panel-{k}">{svg}<p class="projnote">{note}</p></div>'
+    for k, name, svg, note in tabs)
+tab_css = "\n".join(
+    f'#tab-{k}:checked ~ .panels .panel-{k} {{ display:block; }}\n'
+    f'#tab-{k}:checked ~ .tabbar label[for="tab-{k}"] '
+    f'{{ color:var(--ink); border-color:var(--accent); }}'
+    for k, *_ in tabs)
+scatter_block = f'''<div class="projtabs">
+{tab_radios}
+<div class="tabbar">{tab_labels}</div>
+<div class="panels">{tab_panels}</div>
+</div>'''
 
 # --- プロファイルバー（z-score横棒） ---
 def profile_bars(pz, color_class):
@@ -244,6 +280,15 @@ h3 {{ margin:.5rem 0 .1rem; font-size:1.05rem; }}
 .mono {{ font-family:var(--mono); font-size:.64rem; }}
 .note {{ font-size:.85rem; color:var(--ink2); border-left:3px solid var(--accent);
   padding:.2rem 0 .2rem 1rem; margin:1.2rem 0; max-width:46rem; }}
+.projtabs input {{ position:absolute; opacity:0; pointer-events:none; }}
+.tabbar {{ display:flex; gap:.2rem; margin-bottom:.6rem; }}
+.tabbar label {{ font-size:.85rem; color:var(--ink2); padding:.25rem .9rem;
+  border-bottom:2px solid transparent; cursor:pointer; }}
+.tabbar label:hover {{ color:var(--ink); }}
+.projtabs input:focus-visible ~ .tabbar label {{ outline:1px dotted var(--accent); }}
+.panel {{ display:none; }}
+.projnote {{ font-size:.78rem; color:var(--ink2); margin:.3rem 0 0; }}
+{tab_css}
 </style>
 <main>
 <h1>疎居住形態カタログ</h1>
@@ -256,8 +301,9 @@ OS 9次元特徴空間クラスタリング。KMeans（design_weight加重・see
 <div>
 <p class="lead">シルエット係数はK=3で0.60と突出（他は0.27前後）。ただしその内実は
 「バルク96% + 2つの外れ形態」——類型というより<strong>異常形態の検出</strong>。
-散布図は9次元z-score空間のPCA射影（バルクは2,000点に間引き、外れ群は正方形マーカー全点）。</p>
-{scatter_svg}
+散布図は9次元z-score空間の射影（バルクは3,000点に間引き、外れ群は正方形マーカー全点）。
+PCAの分散カバーは64%に留まるため、非線形のt-SNE / UMAPも併置。</p>
+{scatter_block}
 <div class="legend">{legend}</div>
 </div>
 <table>
