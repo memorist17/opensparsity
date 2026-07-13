@@ -110,7 +110,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "merge":
         store = ResultStore(Path(args.out) / "results.db")
         n0 = store.conn.execute("SELECT count(*) FROM locations").fetchone()[0]
-        store.conn.execute(f"ATTACH DATABASE 'file:{args.src_db}?mode=ro' AS src")
+        # URI形式('file:...?mode=ro')はsqliteのビルドによって使えないため、
+        # プレーンなパスをパラメータバインドで渡す（書き込みはINSERTのみで src には触れない）
+        store.conn.execute("ATTACH DATABASE ? AS src", (str(args.src_db),))
         with store.conn:
             store.conn.execute("INSERT OR REPLACE INTO locations SELECT * FROM src.locations")
             store.conn.execute("INSERT OR REPLACE INTO curves SELECT * FROM src.curves")

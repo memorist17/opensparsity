@@ -7,3 +7,5 @@ results/
 *.db-shm
 .DS_Store
 *.egg-info/
+results_merged/
+logs/

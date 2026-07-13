@@ -1,0 +1,34 @@
+# DEGURBAサンプリング本番バッチ用設定。config.yamlと同一だがn_jobs=1のみ変更
+# （複数プロセスをプロセス並列で回すため、joblib内部並列は無効化する。
+#   docs/technical_notes.md §4参照）
+
+canvas:
+  half_size_m: 1000        # 2km x 2km
+  resolution_m: 1.0        # 1m/px -> 2000x2000
+
+analysis:
+  n_jobs: 1
+  r_min: 2
+  r_max: 2000
+  r_steps: 20
+
+  mfa:
+    q_min: -10
+    q_max: 10
+    q_steps: 41
+    grid_shift_count: 16
+
+  lacunarity:
+    full_scan: true
+
+  percolation:
+    d_min: 1
+    d_max: 2000
+    d_steps: 100
+    distance_type: "shortest_path"
+    node_filter: "building"
+
+network:
+  snap_tolerance: 4.0
+  connection_threshold: 10.0
+  use_road_width: true

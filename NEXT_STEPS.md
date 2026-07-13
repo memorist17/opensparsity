@@ -25,25 +25,28 @@ road_length_density）を`pipeline.py`に追加、および**DEGURBA層化サン
 - [ ] exp03: KMeans K=6の妥当性検証（エルボー法/シルエット係数、K=5・7との比較）
       （[exp03 REPORT.md](experiments/exp03_catalog/REPORT.md) §4）
 
-## 2. B1全球センサス → DEGURBA層化サンプリングに置き換え（候補リスト生成完了、実行はGO待ち）
+## 2. DEGURBA層化サンプリング — **本番実行完了（2026-07-13）**
 
 `docs/related_work_and_storyline.md`の「進行中（134万地点）」は根拠のない見積もりだったと
 判明（2026-07-10）。母集団定義をDEGURBA（人口密度の国際標準分類、Low/Very low density rural）
-に切り替え、22サブリージョン×2クラス=44層・層あたり最大700点の層化サンプリングを実装・実行済み。
+に切り替え、22サブリージョン×2クラス=44層・層あたり最大700点の層化サンプリングを実装・実行した。
 詳細: [experiments/exp04_degurba_census/README.md](experiments/exp04_degurba_census/README.md)、
 [sampling/README.md](sampling/README.md)。
 
-- [x] GHS-SMODラスタ入手・DEGURBA定義確認・既存exp01地点の分布集計
-- [x] 候補セル数の実測（2km格子でclass11=3,392万・class12=154万セル、枯渇リスクなし確認）
-- [x] `sampling/`パイプライン実装（候補抽出→国/サブリージョン判定→層化抽出→design_weight算出）
-- [x] `sampling/final_sample.csv`生成完了: **27,710点**（44層中39層は700点達成、
-      5層は候補プール不足で全部使用=Micronesia/Polynesia/Caribbean、想定内）
-- [ ] **生成された候補点リストのユーザーによる目視レビュー**（`sampling/final_sample_stratum_report.csv`、
-      特に`pool_exhausted`層と`un_subregions.py`の国マッピングに抜けがないか）
-- [ ] mini/WSL/Macの3台構成での分割実行計画（`config.yaml`の`n_jobs`調整含む、
-      [technical_notes.md](docs/technical_notes.md) §4）
-- [ ] **本番`ops run --locations sampling/final_sample.csv`（27,710点、3台で約1.3日）は
-      必ずユーザーの明示的なGOを得てから実行**（[technical_notes.md](docs/technical_notes.md) §5）
+- [x] `sampling/final_sample.csv`生成: **27,710点**（44層、5層はプール枯渇で全数使用）
+- [x] **本番`ops run`完了（2026-07-10 11:04 〜 2026-07-13 午前、GO取得済み）**:
+      全27,710点処理済み（丸めキー照合で漏れゼロ確認）。
+      **done 16,474点（59.5%）／failed 11,236点（40.5%）**。
+      failedはほぼ全て「bboxに建物も道路も無い」= Overtureに何も記載がない地点
+      （§3の分析でこのempty率自体をデータとして扱うこと）
+- [x] 実行はMac(初日のみ)→mini+wslの2台に移行、途中で残りリスト方式
+      （`sampling/export_remaining.py`）に切替。統合DBは**Mac上の`results_merged/results.db`**
+      （mini.db/wsl.dbのマージ、27,904行、gitには含めない）。
+      オーバーレイ画像はwsl(13,198枚)とmini(3,051枚)に分散したまま
+- [ ] **実現サンプルへのdesign_weight再計算**（cos(lat)バグ修正済みの式で、
+      doneが取れた点に対して重みを振り直す。final_sample.csvの旧weight列は使わない）
+- [ ] 候補点リストのユーザーによる目視レビュー（`final_sample_stratum_report.csv`の
+      `pool_exhausted`層、`un_subregions.py`の国マッピング）
 
 ## 3. DEGURBA層別再現（査読対策）
 
