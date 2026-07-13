@@ -26,12 +26,26 @@ FNAME = {"density": "密度（建物被覆率）",
          "W_trans": "転移幅（つながりの緩急）",
          "gamma": "臨界勾配（つながりの鋭さ）",
          "Delta_D": "フラクタル次元ギャップ（質量集中度）",
-         "S_alpha": "MFA歪度（複雑さの偏り）"}
+         "S_alpha": "MFA歪度（複雑さの偏り）",
+         "building_count_density": "建物数密度（棟/km²）",
+         "building_footprint_mean_m2": "平均建物面積（m²/棟）",
+         "road_length_density": "道路長密度（km/km²）"}
+# 参考軸: クラスタリング(9次元)には入れず、分布ヒストグラムとダイヤルにのみ出す
+EXTRAS = ["building_count_density", "building_footprint_mean_m2",
+          "road_length_density"]
+FLABEL.update({"building_count_density": "N_b",
+               "building_footprint_mean_m2": "Ā_b",
+               "road_length_density": "L_r"})
 
 main = json.loads((HERE / "cluster_summary.json").read_text())
 sub = json.loads((HERE / "subcluster_summary.json").read_text())
 df = pd.read_csv(HERE / "cluster_result.csv",
                  keep_default_na=False, na_values=[""])  # NamibiaのISO2="NA"対策
+# 参考軸(EXTRAS)はcluster_result.csvに無いのでrealized_sample.csvから結合
+extra_src = pd.read_csv(HERE / "realized_sample.csv",
+                        keep_default_na=False, na_values=[""],
+                        usecols=["name"] + EXTRAS)
+df = df.merge(extra_src, on="name", how="left", validate="one_to_one")
 
 # dataviz参照パレット（categorical、light/dark）
 PAL_L = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948"]
@@ -201,9 +215,10 @@ df["group"] = np.where(df["cluster"] == 0, df["subcluster"],
                        np.where(df["cluster"] == 1, 6, 7))
 
 NBINS = 36
+ALL_FEATS = FEATURES + EXTRAS
 feat_meta = []
 bin_idx = {}
-for f in FEATURES:
+for f in ALL_FEATS:
     x = df[f].to_numpy(float)
     skew = float(pd.Series(x).skew())
     if abs(skew) > 2:
@@ -224,13 +239,13 @@ data_js = {
     "g": df["group"].astype(int).tolist(),
     "u": [[round(float(a), 2), round(float(b), 2)]
           for a, b in zip(df["umap1"], df["umap2"])],
-    "bins": {f: bin_idx[f].tolist() for f in FEATURES},
+    "bins": {f: bin_idx[f].tolist() for f in ALL_FEATS},
     "meta": feat_meta, "nbins": NBINS,
     "names": GROUP_NAMES,
 }
 
-gal = pd.read_csv("/tmp/gallery_pool.csv",
-                  keep_default_na=False, na_values=[""])  # NamibiaのISO2="NA"対策
+gal = pd.read_csv("/tmp/gallery_pool.csv", keep_default_na=False)  # "NA"も""も文字列のまま
+gal.loc[gal["country"] == "", "country"] = "NA"  # 過去に欠損化して空文字保存された分の救済
 name_to_i = {n: i for i, n in enumerate(df["name"])}
 gallery_js = []
 for _, r in gal.iterrows():
@@ -243,7 +258,7 @@ for _, r in gal.iterrows():
         "src": "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode(),
         "cap": f'{r["country"]} · {r["subregion"]}',
         "d": round(float(r["density"]), 4), "w": round(float(r["W_trans"]), 0),
-        "b": [int(bin_idx[f][i]) for f in FEATURES],
+        "b": [int(bin_idx[f][i]) for f in ALL_FEATS],
         "u": [round(float(df["umap1"].iloc[i]), 2),
               round(float(df["umap2"].iloc[i]), 2)],
     })
@@ -390,6 +405,9 @@ function binToDisplay(fkey, b) {
   const v = m.scale === "log10" ? Math.pow(10, t) : t;
   if (["r_crit", "W_trans"].includes(fkey)) return Math.round(v).toLocaleString() + " m";
   if (fkey === "density") return v.toFixed(v < 0.001 ? 5 : 4);
+  if (fkey === "building_count_density") return Math.round(v).toLocaleString() + " 棟/km²";
+  if (fkey === "building_footprint_mean_m2") return Math.round(v).toLocaleString() + " m²";
+  if (fkey === "road_length_density") return v.toFixed(2) + " km/km²";
   if (Math.abs(v) >= 100) return Math.round(v).toLocaleString();
   return v.toFixed(3);
 }
@@ -455,7 +473,7 @@ explorer_js = (explorer_js
 explorer_html = f'''
 <h2 id="explorer">対話型エクスプローラ: グループを選んで分布と実像を見る</h2>
 <p class="lead">下のチップで形態グループを複数選択すると、UMAP上の位置（色付き）、
-9指標の分布（色付き=選択グループ、灰色=全16,474点、いずれも各群のピークで正規化）、
+12指標の分布（OS 9次元+参考3軸: 建物数密度・平均建物面積・道路長密度）（色付き=選択グループ、灰色=全16,474点、いずれも各群のピークで正規化）、
 実際のオーバーレイ画像（各群から無作為10点のプール）が連動します。
 初期選択は本カタログの発見である「長距離転移形態」。</p>
 <div class="gchips">{chips}</div>
@@ -469,7 +487,7 @@ explorer_html = f'''
 <h2 id="dial">指標ダイヤル: 値を動かして形態の変化を見る</h2>
 <p class="lead">スライダーを動かすと、その指標がダイヤル値の近傍（±1ビン幅）にある地点が
 UMAP上で青くハイライトされ、下のギャラリーにはプール160枚のうち値が最も近い8枚が出ます。
-最後に触ったスライダーが「アクティブな指標」です。たとえば d（密度）を左から右へ掃引すると
+最後に触ったスライダーが「アクティブな指標」です。N_b（建物数密度）は「何棟あるか」、d（被覆率）は「どれだけ覆うか」で別軸。たとえば d を左から右へ掃引すると
 「無人の荒野 → ぽつんと一軒家 → 散村 → 村落」への形態変化が実画像で追えます。</p>
 <div class="xgrid">
 <div>
