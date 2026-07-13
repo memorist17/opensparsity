@@ -55,9 +55,11 @@ road_length_density）を`pipeline.py`に追加、および**DEGURBA層化サン
       **主要な発見**: rural帯では (a) 識別の主役はΔD・Δα・s_Λ・Λ̄・d の5特徴、
       (b) W_trans・r_crit は全域で冗長（exp01の「疎の極で主役」は再現せず、
       母集団定義の差が最有力仮説）、(c) γ は d>2×10⁻³ かつ**面積加重でのみ**基準超
-- [ ] **Overtureカバレッジバイアス検証（投稿前必須・本丸）**:
-      `exp05/overture_bias_check.py` 準備済み。GHS-BUILT-Sラスタの入手のみ
-      ユーザーの`!curl`が必要（スクリプト冒頭にURL）
+- [x] **Overtureカバレッジバイアス検証（2026-07-13完了）**: GHS-BUILT-Sとの突き合わせで
+      empty 40.5% = 真の無人33.7% + 未記載疑い6.8%、done地点の相関 r=0.814。
+      very_lowのemptyはほぼ本物、**lowのemptyは大半がデータ欠落**（クラスで性質が正反対）。
+      未記載疑い>20%の層（Eastern Africa low等）は感度分析で除外検証すること
+      （[exp05 REPORT.md](experiments/exp05_degurba_breakdown/REPORT.md) §4）
 - [ ] γの立ち上がり（d≈2×10⁻³）のサブリージョン層別追試（窓の振動の原因切り分け）
 - [ ] exp01との食い違いの決着: global_v2の同一地点をopensparsityパイプラインで
       再処理してネットワーク構築差（L3）を除外検証する

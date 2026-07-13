@@ -88,12 +88,31 @@ exp01 は疎の極（d~0.0007）で「9特徴ほぼ直交、W_trans/r_crit が�
 - ブートストラップ95%CI（B=100、窓内再抽出）を全窓で計算済み
   （`window_contributions.csv` の `*_lo`/`*_hi` 列）
 
-## 4. 未完了: Overtureカバレッジバイアス検証（投稿前必須）
+## 4. Overtureカバレッジバイアス検証（2026-07-13 実施）
 
-`overture_bias_check.py` 準備済み。GHS-BUILT-S（衛星由来、Overtureと独立）との
-突き合わせで「empty＝真の無人 vs 未記載」を層別に分解する。
-**GHS-BUILT-S ラスタのダウンロードはユーザーの `!curl` が必要**（スクリプト冒頭の
-URL参照。JRCサーバーはエージェントからの直接取得がブロックされるため）。
+GHS-BUILT-S E2025（衛星由来の建物被覆、Overtureの地図書き込みと独立）を
+各地点の3km近傍平均でサンプリングし、empty を「真の無人」と「未記載疑い」に分解した
+（閾値: 1kmセルあたり built-up 1,000m²）。
+
+**結果（`overture_bias_by_stratum.csv`）**:
+
+- 全体の empty 40.5% の内訳 = **真のempty 33.7% + 未記載疑い 6.8%**。
+  つまり**emptyの83%は衛星でも何も無い正真正銘の無人地**であり、
+  「emptyはOvertureの欠陥」という批判には全体としては当たらない
+- done地点の log-density（Overture GSI）vs log-GHS built-up の相関 **r=0.814**。
+  Overtureの被覆率測定は衛星ベースの独立測定と強く整合する
+- **ただし未記載疑いは特定の層に集中**: Eastern Africa low **37.1%**、
+  Caribbean low 34.3%、Melanesia low 31.0%、Eastern Asia low 24.1%、
+  Central Asia low 19.3%。**low_density_rural × アフリカ・島嶼・アジア内陸**が
+  Overtureの弱点で、これらの層の推定値は過小カバレッジの影響を受ける
+
+**論文への含意**: (a) 全体の測定妥当性は主張できる（r=0.81、真のempty優勢）、
+(b) 未記載疑い率を層別の品質指標として表に載せ、高率の層（>20%）は感度分析で
+除外しても結論が変わらないことを示すべき、(c) empty率のクラス差（§1）は**性質が正反対**である点を明記する:
+very_low の empty 66.8% は真の無人 64.5% + 未記載 2.2%（=ほぼ本物の無人地）、
+low の empty 13.9% は真の無人 3.8% + 未記載 10.1%（=**大半がデータ欠落**）。
+したがって very_low の empty はそのまま「疎らさの分布」として解釈できるが、
+low の empty を実態として扱ってはならない。
 
 ## 成果物
 
