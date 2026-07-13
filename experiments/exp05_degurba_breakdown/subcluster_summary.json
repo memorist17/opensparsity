@@ -1,0 +1,623 @@
+{
+ "k_sub": 6,
+ "subclusters": [
+  {
+   "id": 0,
+   "n": 4785,
+   "weight_share_of_bulk": 0.23730274440313676,
+   "profile_z": {
+    "density": -0.339,
+    "lacunarity_mean": -0.208,
+    "lacunarity_slope": -0.064,
+    "r_crit": -0.078,
+    "mfa_alpha_width": -0.073,
+    "W_trans": -0.089,
+    "gamma": -0.033,
+    "Delta_D": -0.637,
+    "S_alpha": -0.083
+   },
+   "profile_median": {
+    "density": 0.0041275,
+    "lacunarity_mean": 55.93096111468494,
+    "lacunarity_slope": 0.8546255234196029,
+    "r_crit": 0.4461173612579424,
+    "mfa_alpha_width": 1.7225066436523662,
+    "W_trans": 1.0,
+    "gamma": 0.8536446011028426,
+    "Delta_D": 431.1484285341679,
+    "S_alpha": 0.0082541270635317
+   },
+   "class_share": {
+    "low_density_rural": 0.242,
+    "very_low_density_rural": 0.758
+   },
+   "top_subregions": {
+    "Northern America": 0.176,
+    "Eastern Europe": 0.137,
+    "South America": 0.099,
+    "Eastern Asia": 0.085
+   },
+   "representatives": [
+    {
+     "name": "degurba_eastern_europe_low_8653",
+     "lat": 51.18985390409311,
+     "lon": 108.30371709004268,
+     "country": "RU",
+     "subregion": "Eastern Europe",
+     "density": 0.004829
+    },
+    {
+     "name": "degurba_south_eastern_asia_low_18245",
+     "lat": 5.887758030042735,
+     "lon": 117.87730152976935,
+     "country": "MY",
+     "subregion": "South-Eastern Asia",
+     "density": 0.00414475
+    },
+    {
+     "name": "degurba_southern_asia_low_20850",
+     "lat": 29.740819960531457,
+     "lon": 76.54983422075563,
+     "country": "IN",
+     "subregion": "Southern Asia",
+     "density": 0.00390375
+    },
+    {
+     "name": "degurba_southern_europe_low_22332",
+     "lat": 37.74216645518135,
+     "lon": 26.728182411758933,
+     "country": "GR",
+     "subregion": "Southern Europe",
+     "density": 0.00500675
+    },
+    {
+     "name": "degurba_southern_europe_low_22229",
+     "lat": 41.23978123357942,
+     "lon": 19.69703678037148,
+     "country": "AL",
+     "subregion": "Southern Europe",
+     "density": 0.00623975
+    },
+    {
+     "name": "degurba_south_america_low_16541",
+     "lat": -20.455061999119295,
+     "lon": -42.17864297687511,
+     "country": "BR",
+     "subregion": "South America",
+     "density": 0.00552375
+    },
+    {
+     "name": "degurba_northern_europe_vlow_15994",
+     "lat": 61.50673244542841,
+     "lon": 22.584934803529563,
+     "country": "FI",
+     "subregion": "Northern Europe",
+     "density": 0.0042295
+    },
+    {
+     "name": "degurba_northern_europe_vlow_15819",
+     "lat": 53.84026951611083,
+     "lon": -2.1164374115256006,
+     "country": "GB",
+     "subregion": "Northern Europe",
+     "density": 0.00483475
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "n": 3720,
+   "weight_share_of_bulk": 0.23643984224498032,
+   "profile_z": {
+    "density": -0.324,
+    "lacunarity_mean": -0.207,
+    "lacunarity_slope": -0.004,
+    "r_crit": -0.083,
+    "mfa_alpha_width": -0.3,
+    "W_trans": -0.095,
+    "gamma": 0.034,
+    "Delta_D": 1.245,
+    "S_alpha": -0.136
+   },
+   "profile_median": {
+    "density": 0.00392175,
+    "lacunarity_mean": 58.81482641409477,
+    "lacunarity_slope": 0.8754749340334398,
+    "r_crit": 0.4644352642803852,
+    "mfa_alpha_width": 1.6750527840496465,
+    "W_trans": 0.7606235704827253,
+    "gamma": 0.8754749340334398,
+    "Delta_D": 1902.7686784511784,
+    "S_alpha": 0.00575671059213815
+   },
+   "class_share": {
+    "low_density_rural": 0.188,
+    "very_low_density_rural": 0.812
+   },
+   "top_subregions": {
+    "Northern America": 0.178,
+    "South America": 0.114,
+    "Southern Asia": 0.104,
+    "Eastern Asia": 0.098
+   },
+   "representatives": [
+    {
+     "name": "degurba_polynesia_low_16491",
+     "lat": -13.967956002284469,
+     "lon": -171.86458524877227,
+     "country": "WS",
+     "subregion": "Polynesia",
+     "density": 0.00443375
+    },
+    {
+     "name": "degurba_australia_and_new_zealand_low_594",
+     "lat": -29.425230110863044,
+     "lon": 153.26430794104456,
+     "country": "AU",
+     "subregion": "Australia and New Zealand",
+     "density": 0.00508625
+    },
+    {
+     "name": "degurba_southern_europe_low_22803",
+     "lat": 43.45222093751386,
+     "lon": 13.389810017493854,
+     "country": "IT",
+     "subregion": "Southern Europe",
+     "density": 0.0060435
+    },
+    {
+     "name": "degurba_eastern_asia_low_6952",
+     "lat": 32.02107820440491,
+     "lon": 116.46304752244176,
+     "country": "CN",
+     "subregion": "Eastern Asia",
+     "density": 0.004785
+    },
+    {
+     "name": "degurba_northern_america_low_14265",
+     "lat": 44.0008292624349,
+     "lon": -71.02165118437088,
+     "country": "US",
+     "subregion": "Northern America",
+     "density": 0.0058965
+    },
+    {
+     "name": "degurba_northern_europe_low_15263",
+     "lat": 51.03573160378773,
+     "lon": -1.606306736842111,
+     "country": "GB",
+     "subregion": "Northern Europe",
+     "density": 0.004562
+    },
+    {
+     "name": "degurba_southern_europe_low_22703",
+     "lat": 37.565433824615475,
+     "lon": -4.754479080883122,
+     "country": "ES",
+     "subregion": "Southern Europe",
+     "density": 0.004089
+    },
+    {
+     "name": "degurba_northern_europe_low_15438",
+     "lat": 54.86983598732046,
+     "lon": 23.73812388893586,
+     "country": "LT",
+     "subregion": "Northern Europe",
+     "density": 0.00429575
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "n": 1293,
+   "weight_share_of_bulk": 0.1887047227433528,
+   "profile_z": {
+    "density": -0.675,
+    "lacunarity_mean": 0.048,
+    "lacunarity_slope": 1.185,
+    "r_crit": -0.085,
+    "mfa_alpha_width": -0.7,
+    "W_trans": -0.093,
+    "gamma": 1.167,
+    "Delta_D": -0.404,
+    "S_alpha": -0.108
+   },
+   "profile_median": {
+    "density": 0.0004435,
+    "lacunarity_mean": 419.91611282832343,
+    "lacunarity_slope": 1.2021474145098032,
+    "r_crit": 0.3531612223877198,
+    "mfa_alpha_width": 1.589135899108277,
+    "W_trans": 1.0,
+    "gamma": 1.2021474145098032,
+    "Delta_D": 666.0304545454546,
+    "S_alpha": 0.007738244122061
+   },
+   "class_share": {
+    "low_density_rural": 0.056,
+    "very_low_density_rural": 0.944
+   },
+   "top_subregions": {
+    "South America": 0.224,
+    "Northern America": 0.216,
+    "Eastern Europe": 0.064,
+    "Middle Africa": 0.057
+   },
+   "representatives": [
+    {
+     "name": "degurba_western_africa_low_23567",
+     "lat": 6.066058899606058,
+     "lon": -6.392916612292513,
+     "country": "CI",
+     "subregion": "Western Africa",
+     "density": 0.00034875
+    },
+    {
+     "name": "degurba_northern_america_vlow_14576",
+     "lat": 47.07209957573649,
+     "lon": -112.21620125905817,
+     "country": "US",
+     "subregion": "Northern America",
+     "density": 0.00052925
+    },
+    {
+     "name": "degurba_southern_europe_vlow_22831",
+     "lat": 40.10829232318535,
+     "lon": -5.521947511950247,
+     "country": "ES",
+     "subregion": "Southern Europe",
+     "density": 0.0008585
+    },
+    {
+     "name": "degurba_eastern_africa_low_5656",
+     "lat": 1.775354409341292,
+     "lon": 35.14713977246379,
+     "country": "KE",
+     "subregion": "Eastern Africa",
+     "density": 0.00044725
+    },
+    {
+     "name": "degurba_eastern_africa_low_5763",
+     "lat": 1.6782853637743782,
+     "lon": 37.182037131620376,
+     "country": "KE",
+     "subregion": "Eastern Africa",
+     "density": 0.00025475
+    },
+    {
+     "name": "degurba_caribbean_vlow_2156",
+     "lat": 22.875427927227896,
+     "lon": -81.49693104317394,
+     "country": "CU",
+     "subregion": "Caribbean",
+     "density": 0.00057075
+    },
+    {
+     "name": "degurba_melanesia_low_9778",
+     "lat": -5.652758433538243,
+     "lon": 154.7159923044121,
+     "country": "PG",
+     "subregion": "Melanesia",
+     "density": 0.00050125
+    },
+    {
+     "name": "degurba_south_eastern_asia_low_18055",
+     "lat": 2.4063555894583644,
+     "lon": 117.93659882774809,
+     "country": "ID",
+     "subregion": "South-Eastern Asia",
+     "density": 0.000423
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "n": 972,
+   "weight_share_of_bulk": 0.18593771787119392,
+   "profile_z": {
+    "density": -0.7,
+    "lacunarity_mean": 0.323,
+    "lacunarity_slope": 1.705,
+    "r_crit": -0.084,
+    "mfa_alpha_width": -0.827,
+    "W_trans": -0.095,
+    "gamma": 1.663,
+    "Delta_D": 1.199,
+    "S_alpha": -0.131
+   },
+   "profile_median": {
+    "density": 0.000159625,
+    "lacunarity_mean": 1170.9343629003524,
+    "lacunarity_slope": 1.3709385692488807,
+    "r_crit": 0.36513038442573265,
+    "mfa_alpha_width": 1.557621515809891,
+    "W_trans": 0.7571662571662572,
+    "gamma": 1.3709385692488807,
+    "Delta_D": 1938.4242424242425,
+    "S_alpha": 0.0061905952976488
+   },
+   "class_share": {
+    "low_density_rural": 0.013,
+    "very_low_density_rural": 0.987
+   },
+   "top_subregions": {
+    "South America": 0.256,
+    "Northern America": 0.14,
+    "South-Eastern Asia": 0.062,
+    "Western Africa": 0.058
+   },
+   "representatives": [
+    {
+     "name": "degurba_western_africa_vlow_24605",
+     "lat": 10.27223769865107,
+     "lon": 4.4694900198312615,
+     "country": "NG",
+     "subregion": "Western Africa",
+     "density": 7.05e-05
+    },
+    {
+     "name": "degurba_western_europe_vlow_27651",
+     "lat": 50.15314454243681,
+     "lon": 10.268717810667384,
+     "country": "DE",
+     "subregion": "Western Europe",
+     "density": 0.000121
+    },
+    {
+     "name": "degurba_middle_africa_vlow_11980",
+     "lat": -6.495695943207302,
+     "lon": 19.7895694753646,
+     "country": "CD",
+     "subregion": "Middle Africa",
+     "density": 5.175e-05
+    },
+    {
+     "name": "degurba_western_africa_vlow_24760",
+     "lat": 12.978835096806964,
+     "lon": -3.736018376307436,
+     "country": "BF",
+     "subregion": "Western Africa",
+     "density": 8.05e-05
+    },
+    {
+     "name": "degurba_western_africa_vlow_24784",
+     "lat": 8.727413839789811,
+     "lon": -10.51704815161686,
+     "country": "SL",
+     "subregion": "Western Africa",
+     "density": 9.225e-05
+    },
+    {
+     "name": "degurba_southern_europe_vlow_23425",
+     "lat": 39.57197079897979,
+     "lon": -3.21960815975429,
+     "country": "ES",
+     "subregion": "Southern Europe",
+     "density": 0.0002205
+    },
+    {
+     "name": "degurba_northern_africa_vlow_13530",
+     "lat": 11.379756905875292,
+     "lon": 27.549923622471223,
+     "country": "SD",
+     "subregion": "Northern Africa",
+     "density": 7.2e-05
+    },
+    {
+     "name": "degurba_south_eastern_asia_vlow_19022",
+     "lat": 23.29290220253843,
+     "lon": 98.34331367431128,
+     "country": "MM",
+     "subregion": "South-Eastern Asia",
+     "density": 8.425e-05
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "n": 4784,
+   "weight_share_of_bulk": 0.10574628416621731,
+   "profile_z": {
+    "density": 1.023,
+    "lacunarity_mean": -0.236,
+    "lacunarity_slope": -0.969,
+    "r_crit": -0.047,
+    "mfa_alpha_width": 0.96,
+    "W_trans": -0.072,
+    "gamma": -0.91,
+    "Delta_D": -0.372,
+    "S_alpha": 0.003
+   },
+   "profile_median": {
+    "density": 0.01774,
+    "lacunarity_mean": 16.04720216572396,
+    "lacunarity_slope": 0.606368875922112,
+    "r_crit": 0.49594645860950226,
+    "mfa_alpha_width": 1.9296008545133372,
+    "W_trans": 0.9826145082538945,
+    "gamma": 0.6046147579484281,
+    "Delta_D": 378.6933957747036,
+    "S_alpha": 0.0090795397698849
+   },
+   "class_share": {
+    "low_density_rural": 0.551,
+    "very_low_density_rural": 0.449
+   },
+   "top_subregions": {
+    "Eastern Asia": 0.137,
+    "Eastern Europe": 0.131,
+    "Southern Asia": 0.127,
+    "Northern America": 0.106
+   },
+   "representatives": [
+    {
+     "name": "degurba_south_eastern_asia_low_18359",
+     "lat": 3.3935416550844373,
+     "lon": 98.7421309807667,
+     "country": "ID",
+     "subregion": "South-Eastern Asia",
+     "density": 0.0214875
+    },
+    {
+     "name": "degurba_central_asia_low_4363",
+     "lat": 49.92389669449344,
+     "lon": 82.50018120421032,
+     "country": "KZ",
+     "subregion": "Central Asia",
+     "density": 0.01966225
+    },
+    {
+     "name": "degurba_western_europe_low_26796",
+     "lat": 52.48823437703416,
+     "lon": 8.074115337434778,
+     "country": "DE",
+     "subregion": "Western Europe",
+     "density": 0.02111325
+    },
+    {
+     "name": "degurba_south_america_low_16646",
+     "lat": -13.657153751178123,
+     "lon": -72.90497274684502,
+     "country": "PE",
+     "subregion": "South America",
+     "density": 0.019053
+    },
+    {
+     "name": "degurba_eastern_asia_low_7016",
+     "lat": 31.728457943946974,
+     "lon": 112.10770323565436,
+     "country": "CN",
+     "subregion": "Eastern Asia",
+     "density": 0.0202365
+    },
+    {
+     "name": "degurba_southern_africa_low_19790",
+     "lat": -27.810353783395698,
+     "lon": 28.415002900395315,
+     "country": "ZA",
+     "subregion": "Southern Africa",
+     "density": 0.02122925
+    },
+    {
+     "name": "degurba_southern_asia_low_21216",
+     "lat": 33.85381296680585,
+     "lon": 58.503775090152345,
+     "country": "IR",
+     "subregion": "Southern Asia",
+     "density": 0.01989325
+    },
+    {
+     "name": "degurba_south_america_low_17106",
+     "lat": -22.300111853500713,
+     "lon": -46.94807259541702,
+     "country": "BR",
+     "subregion": "South America",
+     "density": 0.0236765
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "n": 233,
+   "weight_share_of_bulk": 0.04586868857111891,
+   "profile_z": {
+    "density": -0.682,
+    "lacunarity_mean": 0.194,
+    "lacunarity_slope": 1.274,
+    "r_crit": -0.086,
+    "mfa_alpha_width": -3.196,
+    "W_trans": -0.094,
+    "gamma": 1.253,
+    "Delta_D": 0.265,
+    "S_alpha": -0.147
+   },
+   "profile_median": {
+    "density": 0.00024775,
+    "lacunarity_mean": 706.7372253745849,
+    "lacunarity_slope": 1.2410924918016102,
+    "r_crit": 0.309592868798767,
+    "mfa_alpha_width": 1.089966936876099,
+    "W_trans": 0.940959409594096,
+    "gamma": 1.2410924918016102,
+    "Delta_D": 1164.4006734006734,
+    "S_alpha": 0.0042560342671335
+   },
+   "class_share": {
+    "low_density_rural": 0.027,
+    "very_low_density_rural": 0.973
+   },
+   "top_subregions": {
+    "South America": 0.254,
+    "Northern America": 0.113,
+    "Southern Asia": 0.111,
+    "Western Africa": 0.067
+   },
+   "representatives": [
+    {
+     "name": "degurba_central_america_low_2672",
+     "lat": 15.2702016319357,
+     "lon": -88.39262015419331,
+     "country": "HN",
+     "subregion": "Central America",
+     "density": 0.000506
+    },
+    {
+     "name": "degurba_central_america_vlow_3585",
+     "lat": 15.0734451264448,
+     "lon": -88.93311864338854,
+     "country": "HN",
+     "subregion": "Central America",
+     "density": 0.00064475
+    },
+    {
+     "name": "degurba_central_asia_vlow_4557",
+     "lat": 39.23310425316946,
+     "lon": 65.73448190651042,
+     "country": "UZ",
+     "subregion": "Central Asia",
+     "density": 0.000243
+    },
+    {
+     "name": "degurba_south_america_vlow_17518",
+     "lat": 0.772382314884062,
+     "lon": -75.36136302010965,
+     "country": "CO",
+     "subregion": "South America",
+     "density": 0.0006525
+    },
+    {
+     "name": "degurba_western_asia_vlow_25719",
+     "lat": 30.270492451244422,
+     "lon": 38.93481042988588,
+     "country": "SA",
+     "subregion": "Western Asia",
+     "density": 0.0003975
+    },
+    {
+     "name": "degurba_middle_africa_low_11518",
+     "lat": -16.542662044567965,
+     "lon": 14.988718677825114,
+     "country": "AO",
+     "subregion": "Middle Africa",
+     "density": 0.00045925
+    },
+    {
+     "name": "degurba_middle_africa_low_11063",
+     "lat": -4.939873453910272,
+     "lon": 12.755901375528246,
+     "country": "CD",
+     "subregion": "Middle Africa",
+     "density": 0.000402
+    },
+    {
+     "name": "degurba_western_asia_vlow_26189",
+     "lat": 36.719284468085654,
+     "lon": 31.996678763512552,
+     "country": "TR",
+     "subregion": "Western Asia",
+     "density": 0.000214
+    }
+   ]
+  }
+ ]
+}
