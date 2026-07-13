@@ -183,6 +183,196 @@ d中央値 {c["profile_median"]["density"]:.5f}</p></header>
 <div class="reps">{rep_cards(c["representatives"])}</div>
 </article>''')
 
+# --- 対話型エクスプローラ用データ ---
+GROUP_NAMES = {0: "均質・低集中型", 1: "点集中型", 2: "微小疎+急転移型",
+               3: "極疎・高集中型", 4: "相対稠密型", 5: "単調スケール型",
+               6: "超疎斑点形態", 7: "長距離転移形態"}
+df["group"] = np.where(df["cluster"] == 0, df["subcluster"],
+                       np.where(df["cluster"] == 1, 6, 7))
+
+NBINS = 36
+feat_meta = []
+bin_idx = {}
+for f in FEATURES:
+    x = df[f].to_numpy(float)
+    skew = float(pd.Series(x).skew())
+    if abs(skew) > 2:
+        shift = max(1e-6, -x.min() + 1e-6)
+        xt = np.log10(x + shift)
+        scale = "log10"
+    else:
+        xt, scale = x, "linear"
+    lo, hi = np.quantile(xt, [0.005, 0.995])
+    if hi <= lo:
+        hi = lo + 1e-9
+    b = np.clip(((xt - lo) / (hi - lo) * NBINS).astype(int), 0, NBINS - 1)
+    bin_idx[f] = b
+    feat_meta.append({"key": f, "label": FLABEL[f], "scale": scale,
+                      "lo": round(float(lo), 3), "hi": round(float(hi), 3)})
+
+data_js = {
+    "g": df["group"].astype(int).tolist(),
+    "u": [[round(float(a), 2), round(float(b), 2)]
+          for a, b in zip(df["umap1"], df["umap2"])],
+    "bins": {f: bin_idx[f].tolist() for f in FEATURES},
+    "meta": feat_meta, "nbins": NBINS,
+    "names": GROUP_NAMES,
+}
+
+gal = pd.read_csv("/tmp/gallery_pool.csv")
+gallery_js = []
+for _, r in gal.iterrows():
+    p = HERE / "gallery_images" / "thumb" / r["fname"]
+    if not p.exists():
+        continue
+    gallery_js.append({
+        "g": int(r["group"]),
+        "src": "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode(),
+        "cap": f'{r["country"]} · {r["subregion"]}',
+        "d": round(float(r["density"]), 4), "w": round(float(r["W_trans"]), 0),
+    })
+
+GROUP_COLORS_L = PAL_L + [MACRO_L[1], MACRO_L[2]]
+GROUP_COLORS_D = PAL_D + [MACRO_D[1], MACRO_D[2]]
+
+chips = "".join(
+    f'<label class="gchip" style="--c:{GROUP_COLORS_L[g]}">'
+    f'<input type="checkbox" data-g="{g}" {"checked" if g == 7 else ""}/>'
+    f'<span class="sw{" sq" if g >= 6 else ""}"></span>{GROUP_NAMES[g]}</label>'
+    for g in range(8))
+
+hist_cells = "".join(
+    f'<div class="hcell"><div class="htitle">{m["label"]}'
+    f'{" <span class=hscale>(log10)</span>" if m["scale"] == "log10" else ""}</div>'
+    f'<canvas class="hist" data-f="{m["key"]}" width="300" height="110"></canvas>'
+    f'<div class="hax"><span>{m["lo"]}</span><span>{m["hi"]}</span></div></div>'
+    for m in feat_meta)
+
+explorer_js = """
+<script>
+const DATA = __DATA__;
+const GALLERY = __GALLERY__;
+const COLORS_L = __COLORS_L__;
+const COLORS_D = __COLORS_D__;
+const isDark = () => {
+  const t = document.documentElement.dataset.theme;
+  if (t === "dark") return true;
+  if (t === "light") return false;
+  return matchMedia("(prefers-color-scheme: dark)").matches;
+};
+const colors = () => isDark() ? COLORS_D : COLORS_L;
+const selected = new Set([7]);
+const N = DATA.g.length;
+
+function drawScatter() {
+  const cv = document.getElementById("xmap");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, P = 14;
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const [x, y] of DATA.u) { x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+    y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const sx = x => P + (x - x0) / (x1 - x0) * (W - 2 * P);
+  const sy = y => H - P - (y - y0) / (y1 - y0) * (H - 2 * P);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = isDark() ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.10)";
+  for (let i = 0; i < N; i++) {
+    if (selected.has(DATA.g[i])) continue;
+    ctx.fillRect(sx(DATA.u[i][0]), sy(DATA.u[i][1]), 1.6, 1.6);
+  }
+  const cs = colors();
+  for (let i = 0; i < N; i++) {
+    const g = DATA.g[i];
+    if (!selected.has(g)) continue;
+    ctx.fillStyle = cs[g];
+    const s = g >= 6 ? 3.4 : 2.2;
+    ctx.fillRect(sx(DATA.u[i][0]) - s / 2, sy(DATA.u[i][1]) - s / 2, s, s);
+  }
+}
+
+function drawHists() {
+  const cs = colors();
+  document.querySelectorAll("canvas.hist").forEach(cv => {
+    const f = cv.dataset.f, B = DATA.nbins;
+    const ctx = cv.getContext("2d");
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    const bw = W / B;
+    const all = new Array(B).fill(0);
+    for (let i = 0; i < N; i++) all[DATA.bins[f][i]]++;
+    const amax = Math.max(...all);
+    ctx.fillStyle = isDark() ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.09)";
+    for (let b = 0; b < B; b++) {
+      const h = all[b] / amax * (H - 4);
+      ctx.fillRect(b * bw, H - h, bw - 1, h);
+    }
+    for (const g of selected) {
+      const cnt = new Array(B).fill(0);
+      let tot = 0;
+      for (let i = 0; i < N; i++) if (DATA.g[i] === g) { cnt[DATA.bins[f][i]]++; tot++; }
+      if (!tot) continue;
+      const gmax = Math.max(...cnt);
+      ctx.fillStyle = cs[g] + "59";
+      ctx.strokeStyle = cs[g];
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (let b = 0; b < B; b++) {
+        const h = cnt[b] / gmax * (H - 4);
+        ctx.lineTo(b * bw, H - h); ctx.lineTo((b + 1) * bw, H - h);
+      }
+      ctx.lineTo(W, H); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  });
+}
+
+function drawGallery() {
+  const box = document.getElementById("xgallery");
+  const items = GALLERY.filter(it => selected.has(it.g));
+  box.innerHTML = items.slice(0, 24).map(it =>
+    `<figure class="rep"><img src="${it.src}" alt="overlay ${it.cap}" loading="lazy"/>` +
+    `<figcaption><span class="gdot" style="background:${colors()[it.g]}"></span>` +
+    `${DATA.names[it.g]}<br>${it.cap}<br>` +
+    `<span class="mono">d=${it.d} · W=${it.w}m</span></figcaption></figure>`).join("") ||
+    '<p class="projnote">グループを選択してください</p>';
+  document.getElementById("xcount").textContent =
+    `選択中: ${[...selected].map(g => DATA.names[g]).join("、") || "なし"} — ` +
+    `${DATA.g.filter(g => selected.has(g)).length.toLocaleString()} 地点`;
+}
+
+function redraw() { drawScatter(); drawHists(); drawGallery(); }
+document.querySelectorAll(".gchip input").forEach(cb => {
+  cb.addEventListener("change", () => {
+    const g = +cb.dataset.g;
+    cb.checked ? selected.add(g) : selected.delete(g);
+    redraw();
+  });
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+new MutationObserver(redraw).observe(document.documentElement,
+  { attributes: true, attributeFilter: ["data-theme"] });
+redraw();
+</script>"""
+explorer_js = (explorer_js
+    .replace("__DATA__", json.dumps(data_js, separators=(",", ":")))
+    .replace("__GALLERY__", json.dumps(gallery_js, separators=(",", ":")))
+    .replace("__COLORS_L__", json.dumps(GROUP_COLORS_L))
+    .replace("__COLORS_D__", json.dumps(GROUP_COLORS_D)))
+
+explorer_html = f'''
+<h2 id="explorer">対話型エクスプローラ: グループを選んで分布と実像を見る</h2>
+<p class="lead">下のチップで形態グループを複数選択すると、UMAP上の位置（色付き）、
+9指標の分布（色付き=選択グループ、灰色=全16,474点、いずれも各群のピークで正規化）、
+実際のオーバーレイ画像（各群から無作為10点のプール）が連動します。
+初期選択は本カタログの発見である「長距離転移形態」。</p>
+<div class="gchips">{chips}</div>
+<p class="projnote" id="xcount"></p>
+<div class="xgrid">
+<canvas id="xmap" width="560" height="430"></canvas>
+<div class="hgrid">{hist_cells}</div>
+</div>
+<div class="reps xg" id="xgallery"></div>
+'''
+
 sil = main["silhouette_by_k"]
 sil_rows = "".join(
     f'<tr{" class=chosen" if int(k)==main["chosen_k"] else ""}>'
@@ -199,7 +389,8 @@ legend = "".join(
     f'<span class="lg m{i}"><span class="sw sq"></span>{MACRO_NAMES[i]}</span>'
     for i in MACRO_L)
 
-html = f'''<title>疎居住形態カタログ — DEGURBA全球サンプル16,474点</title>
+html = f'''<meta charset="utf-8"/>
+<title>疎居住形態カタログ — DEGURBA全球サンプル16,474点</title>
 <style>
 :root {{
   --bg:#fbfbf9; --ink:#1c1b18; --ink2:#5b594f; --line:#e4e2d8;
@@ -289,6 +480,35 @@ h3 {{ margin:.5rem 0 .1rem; font-size:1.05rem; }}
 .panel {{ display:none; }}
 .projnote {{ font-size:.78rem; color:var(--ink2); margin:.3rem 0 0; }}
 {tab_css}
+.gchips {{ display:flex; flex-wrap:wrap; gap:.45rem; margin:.4rem 0 .6rem; }}
+.gchip {{ display:inline-flex; align-items:center; gap:.45rem; font-size:.84rem;
+  border:1px solid var(--line); border-radius:99px; padding:.28rem .85rem;
+  cursor:pointer; user-select:none; background:var(--card); }}
+.gchip:has(input:checked) {{ border-color:var(--c); background:
+  color-mix(in srgb, var(--c) 12%, var(--card)); }}
+.gchip input {{ position:absolute; opacity:0; pointer-events:none; }}
+.gchip .sw {{ width:11px; height:11px; border-radius:50%; background:var(--c);
+  opacity:.35; }}
+.gchip:has(input:checked) .sw {{ opacity:1; }}
+.gchip:has(input:focus-visible) {{ outline:2px solid var(--accent); }}
+.xgrid {{ display:grid; grid-template-columns:minmax(300px,560px) 1fr;
+  gap:1.4rem; align-items:start; margin:.8rem 0 1.2rem; }}
+@media (max-width:920px) {{ .xgrid {{ grid-template-columns:1fr; }} }}
+#xmap {{ width:100%; height:auto; background:var(--card);
+  border:1px solid var(--line); border-radius:6px; }}
+.hgrid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:.7rem .9rem; }}
+@media (max-width:560px) {{ .hgrid {{ grid-template-columns:repeat(2,1fr); }} }}
+.hcell {{ min-width:0; }}
+.htitle {{ font-size:.8rem; margin-bottom:.15rem; }}
+.hscale {{ color:var(--ink2); font-size:.68rem; }}
+.hist {{ width:100%; height:auto; background:var(--card);
+  border:1px solid var(--line); border-radius:4px; }}
+.hax {{ display:flex; justify-content:space-between; font-size:.62rem;
+  color:var(--ink2); font-family:var(--mono); }}
+.reps.xg {{ grid-template-columns:repeat(6,1fr); }}
+@media (max-width:820px) {{ .reps.xg {{ grid-template-columns:repeat(3,1fr); }} }}
+.gdot {{ display:inline-block; width:8px; height:8px; border-radius:50%;
+  margin-right:.3rem; }}
 </style>
 <main>
 <h1>疎居住形態カタログ</h1>
@@ -312,6 +532,8 @@ PCAの分散カバーは64%に留まるため、非線形のt-SNE / UMAPも併�
 </table>
 </div>
 
+{explorer_html}
+
 <h2>外れ形態（2群、合計687点）</h2>
 <p class="lead">全体の4%だが面積加重では12%——「異常」ではなく広大な領域を代表する少数派。</p>
 <div class="catalog">{"".join(macro_cards)}</div>
@@ -324,8 +546,10 @@ PCAの分散カバーは64%に留まるため、非線形のt-SNE / UMAPも併�
 <p class="note">方法メモ: 特徴は d, Λ̄, s_Λ, r_crit, Δα, W_trans, γ, ΔD, S_α の9次元
 （z-score標準化）。クラスタ番号は面積加重シェア降順。代表点は各クラスタ重心への
 ユークリッド距離最小の地点。design_weight はMollweide等積格子上のHorvitz-Thompson重み
-（cos(lat)補正なし・2026-07-12修正版）。データ: Overture 2026-06-17 / GHS-SMOD E2025。</p>
-</main>'''
+（cos(lat)補正なし・2026-07-12修正版）。データ: Overture 2026-06-17 / GHS-SMOD E2025。
+エクスプローラのヒストグラムは点数ベース（design_weight非加重）で各群ピーク正規化。</p>
+</main>
+{explorer_js}'''
 
 out = HERE / "catalog_degurba.html"
 out.write_text(html)
