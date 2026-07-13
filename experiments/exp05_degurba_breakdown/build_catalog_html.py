@@ -18,10 +18,20 @@ FEATURES = ["density", "lacunarity_mean", "lacunarity_slope", "r_crit",
 FLABEL = {"density": "d", "lacunarity_mean": "Λ̄", "lacunarity_slope": "s_Λ",
           "r_crit": "r_crit", "mfa_alpha_width": "Δα", "W_trans": "W_trans",
           "gamma": "γ", "Delta_D": "ΔD", "S_alpha": "S_α"}
+FNAME = {"density": "密度（建物被覆率）",
+         "lacunarity_mean": "ラキュナリティ平均（空隙の不均質さ）",
+         "lacunarity_slope": "ラキュナリティ勾配（空隙のスケール依存）",
+         "r_crit": "臨界スケール（連結が立ち上がる距離）",
+         "mfa_alpha_width": "マルチフラクタル幅（複雑さの幅）",
+         "W_trans": "転移幅（つながりの緩急）",
+         "gamma": "臨界勾配（つながりの鋭さ）",
+         "Delta_D": "フラクタル次元ギャップ（質量集中度）",
+         "S_alpha": "MFA歪度（複雑さの偏り）"}
 
 main = json.loads((HERE / "cluster_summary.json").read_text())
 sub = json.loads((HERE / "subcluster_summary.json").read_text())
-df = pd.read_csv(HERE / "cluster_result.csv")
+df = pd.read_csv(HERE / "cluster_result.csv",
+                 keep_default_na=False, na_values=[""])  # NamibiaのISO2="NA"対策
 
 # dataviz参照パレット（categorical、light/dark）
 PAL_L = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948"]
@@ -219,17 +229,23 @@ data_js = {
     "names": GROUP_NAMES,
 }
 
-gal = pd.read_csv("/tmp/gallery_pool.csv")
+gal = pd.read_csv("/tmp/gallery_pool.csv",
+                  keep_default_na=False, na_values=[""])  # NamibiaのISO2="NA"対策
+name_to_i = {n: i for i, n in enumerate(df["name"])}
 gallery_js = []
 for _, r in gal.iterrows():
     p = HERE / "gallery_images" / "thumb" / r["fname"]
-    if not p.exists():
+    if not p.exists() or r["name"] not in name_to_i:
         continue
+    i = name_to_i[r["name"]]
     gallery_js.append({
-        "g": int(r["group"]),
+        "g": int(df["group"].iloc[i]),
         "src": "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode(),
         "cap": f'{r["country"]} · {r["subregion"]}',
         "d": round(float(r["density"]), 4), "w": round(float(r["W_trans"]), 0),
+        "b": [int(bin_idx[f][i]) for f in FEATURES],
+        "u": [round(float(df["umap1"].iloc[i]), 2),
+              round(float(df["umap2"].iloc[i]), 2)],
     })
 
 GROUP_COLORS_L = PAL_L + [MACRO_L[1], MACRO_L[2]]
@@ -242,10 +258,20 @@ chips = "".join(
     for g in range(8))
 
 hist_cells = "".join(
-    f'<div class="hcell"><div class="htitle">{m["label"]}'
+    f'<div class="hcell"><div class="htitle"><b>{m["label"]}</b> '
+    f'<span class="hname">{FNAME[m["key"]]}</span>'
     f'{" <span class=hscale>(log10)</span>" if m["scale"] == "log10" else ""}</div>'
     f'<canvas class="hist" data-f="{m["key"]}" width="300" height="110"></canvas>'
     f'<div class="hax"><span>{m["lo"]}</span><span>{m["hi"]}</span></div></div>'
+    for m in feat_meta)
+
+dial_rows = "".join(
+    f'<div class="drow" data-f="{m["key"]}">'
+    f'<span class="dlabel"><b>{m["label"]}</b><br/>'
+    f'<span class="dname">{FNAME[m["key"]]}</span></span>'
+    f'<input type="range" class="dial" data-f="{m["key"]}" min="0" max="{NBINS-1}" '
+    f'value="{NBINS//2}"/>'
+    f'<span class="dval" data-f="{m["key"]}">–</span></div>'
     for m in feat_meta)
 
 explorer_js = """
@@ -351,6 +377,74 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
 new MutationObserver(redraw).observe(document.documentElement,
   { attributes: true, attributeFilter: ["data-theme"] });
 redraw();
+
+// ===== 指標ダイヤル =====
+const FKEYS = DATA.meta.map(m => m.key);
+let activeF = "density";
+const dialVal = Object.fromEntries(FKEYS.map(k => [k, Math.floor(DATA.nbins / 2)]));
+const accent = () => isDark() ? "#3987e5" : "#2a78d6";
+
+function binToDisplay(fkey, b) {
+  const m = DATA.meta.find(m => m.key === fkey);
+  const t = m.lo + (b + 0.5) / DATA.nbins * (m.hi - m.lo);
+  const v = m.scale === "log10" ? Math.pow(10, t) : t;
+  if (["r_crit", "W_trans"].includes(fkey)) return Math.round(v).toLocaleString() + " m";
+  if (fkey === "density") return v.toFixed(v < 0.001 ? 5 : 4);
+  if (Math.abs(v) >= 100) return Math.round(v).toLocaleString();
+  return v.toFixed(3);
+}
+
+function drawDial() {
+  const cv = document.getElementById("dmap");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, P = 14;
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const [x, y] of DATA.u) { x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+    y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const sx = x => P + (x - x0) / (x1 - x0) * (W - 2 * P);
+  const sy = y => H - P - (y - y0) / (y1 - y0) * (H - 2 * P);
+  ctx.clearRect(0, 0, W, H);
+  const b = dialVal[activeF], bins = DATA.bins[activeF];
+  ctx.fillStyle = isDark() ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.09)";
+  let nsel = 0;
+  for (let i = 0; i < N; i++) {
+    if (Math.abs(bins[i] - b) <= 1) continue;
+    ctx.fillRect(sx(DATA.u[i][0]), sy(DATA.u[i][1]), 1.6, 1.6);
+  }
+  ctx.fillStyle = accent();
+  for (let i = 0; i < N; i++) {
+    if (Math.abs(bins[i] - b) > 1) continue;
+    nsel++;
+    ctx.fillRect(sx(DATA.u[i][0]) - 1.4, sy(DATA.u[i][1]) - 1.4, 2.8, 2.8);
+  }
+  const m = DATA.meta.find(m => m.key === activeF);
+  document.getElementById("dcount").textContent =
+    `${document.querySelector(`.drow[data-f="${activeF}"] b`).textContent} ` +
+    `≈ ${binToDisplay(activeF, b)} の近傍帯 — ${nsel.toLocaleString()} 地点` +
+    (m.scale === "log10" ? "（log10スケール）" : "");
+  FKEYS.forEach(k => {
+    document.querySelector(`.dval[data-f="${k}"]`).textContent =
+      binToDisplay(k, dialVal[k]);
+    document.querySelector(`.drow[data-f="${k}"]`)
+      .classList.toggle("active", k === activeF);
+  });
+  const fi = FKEYS.indexOf(activeF);
+  const items = [...GALLERY].sort((a, bb) =>
+    Math.abs(a.b[fi] - b) - Math.abs(bb.b[fi] - b)).slice(0, 8);
+  document.getElementById("dgallery").innerHTML = items.map(it =>
+    `<figure class="rep"><img src="${it.src}" alt="overlay ${it.cap}" loading="lazy"/>` +
+    `<figcaption>${it.cap}<br><span class="mono">${activeF}帯との差 ` +
+    `${Math.abs(it.b[fi] - b)}bin · d=${it.d}</span></figcaption></figure>`).join("");
+}
+document.querySelectorAll("input.dial").forEach(sl => {
+  const upd = () => { activeF = sl.dataset.f; dialVal[activeF] = +sl.value; drawDial(); };
+  sl.addEventListener("input", upd);
+  sl.addEventListener("pointerdown", upd);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawDial);
+new MutationObserver(drawDial).observe(document.documentElement,
+  { attributes: true, attributeFilter: ["data-theme"] });
+drawDial();
 </script>"""
 explorer_js = (explorer_js
     .replace("__DATA__", json.dumps(data_js, separators=(",", ":")))
@@ -371,6 +465,20 @@ explorer_html = f'''
 <div class="hgrid">{hist_cells}</div>
 </div>
 <div class="reps xg" id="xgallery"></div>
+
+<h2 id="dial">指標ダイヤル: 値を動かして形態の変化を見る</h2>
+<p class="lead">スライダーを動かすと、その指標がダイヤル値の近傍（±1ビン幅）にある地点が
+UMAP上で青くハイライトされ、下のギャラリーにはプール160枚のうち値が最も近い8枚が出ます。
+最後に触ったスライダーが「アクティブな指標」です。たとえば d（密度）を左から右へ掃引すると
+「無人の荒野 → ぽつんと一軒家 → 散村 → 村落」への形態変化が実画像で追えます。</p>
+<div class="xgrid">
+<div>
+<div class="dials">{dial_rows}</div>
+<p class="projnote" id="dcount"></p>
+</div>
+<canvas id="dmap" width="560" height="430"></canvas>
+</div>
+<div class="reps xg" id="dgallery"></div>
 '''
 
 sil = main["silhouette_by_k"]
@@ -509,6 +617,20 @@ h3 {{ margin:.5rem 0 .1rem; font-size:1.05rem; }}
 @media (max-width:820px) {{ .reps.xg {{ grid-template-columns:repeat(3,1fr); }} }}
 .gdot {{ display:inline-block; width:8px; height:8px; border-radius:50%;
   margin-right:.3rem; }}
+.hname {{ color:var(--ink2); font-size:.68rem; }}
+.dials {{ display:flex; flex-direction:column; gap:.55rem; }}
+.drow {{ display:grid; grid-template-columns:11rem 1fr 5.5rem; gap:.8rem;
+  align-items:center; padding:.35rem .6rem; border-radius:6px;
+  border:1px solid transparent; }}
+.drow.active {{ border-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 7%, transparent); }}
+.dlabel {{ font-size:.8rem; line-height:1.35; }}
+.dname {{ color:var(--ink2); font-size:.68rem; }}
+.dial {{ width:100%; accent-color:var(--accent); }}
+.dval {{ font-family:var(--mono); font-size:.74rem; color:var(--ink2);
+  text-align:right; font-variant-numeric:tabular-nums; }}
+#dmap {{ width:100%; height:auto; background:var(--card);
+  border:1px solid var(--line); border-radius:6px; }}
 </style>
 <main>
 <h1>疎居住形態カタログ</h1>
