@@ -43,16 +43,24 @@ road_length_density）を`pipeline.py`に追加、および**DEGURBA層化サン
       （`sampling/export_remaining.py`）に切替。統合DBは**Mac上の`results_merged/results.db`**
       （mini.db/wsl.dbのマージ、27,904行、gitには含めない）。
       オーバーレイ画像はwsl(13,198枚)とmini(3,051枚)に分散したまま
-- [ ] **実現サンプルへのdesign_weight再計算**（cos(lat)バグ修正済みの式で、
-      doneが取れた点に対して重みを振り直す。final_sample.csvの旧weight列は使わない）
+- [x] **実現サンプルへのdesign_weight再計算**（2026-07-13、
+      `experiments/exp05_degurba_breakdown/build_dataset.py`。empty率も層別に集計済み）
 - [ ] 候補点リストのユーザーによる目視レビュー（`final_sample_stratum_report.csv`の
       `pool_exhausted`層、`un_subregions.py`の国マッピング）
 
-## 3. DEGURBA層別再現（査読対策）
+## 3. DEGURBA層別再現（査読対策）— exp05として実施済み（2026-07-13）
 
-- [ ] exp01の分析をDEGURBA（都市化度）クラスで層別して再実行し、結果が頑健かを確認
-- [ ] design_weight（層化サンプリングの重み）を付けた再計算で、無作為抽出でない
-      バイアスの影響を確認する
+- [x] exp01のLOFO感度分析をDEGURBA実現サンプル16,474点・design_weight付きで再実施
+      （[exp05 REPORT.md](experiments/exp05_degurba_breakdown/REPORT.md)）。
+      **主要な発見**: rural帯では (a) 識別の主役はΔD・Δα・s_Λ・Λ̄・d の5特徴、
+      (b) W_trans・r_crit は全域で冗長（exp01の「疎の極で主役」は再現せず、
+      母集団定義の差が最有力仮説）、(c) γ は d>2×10⁻³ かつ**面積加重でのみ**基準超
+- [ ] **Overtureカバレッジバイアス検証（投稿前必須・本丸）**:
+      `exp05/overture_bias_check.py` 準備済み。GHS-BUILT-Sラスタの入手のみ
+      ユーザーの`!curl`が必要（スクリプト冒頭にURL）
+- [ ] γの立ち上がり（d≈2×10⁻³）のサブリージョン層別追試（窓の振動の原因切り分け）
+- [ ] exp01との食い違いの決着: global_v2の同一地点をopensparsityパイプラインで
+      再処理してネットワーク構築差（L3）を除外検証する
 
 ## 4. 論文への統合
 
