@@ -204,13 +204,17 @@ flowchart LR
 
 ### コーパス全体で見ると
 
-`density` 単体では潰れる情報が多い。現在 `results.db` にある地点で見ると、密度を固定しても
-パーコレーション挙動は1桁のレンジに散る:
+`density` 単体では潰れる情報が多い。DEGURBA層化サンプルの実現分 **16,257地点**で見ると、
+密度を固定してもパーコレーション挙動は1桁のレンジに散る。上の6地点は各パネルの色で示した:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/corpus_dark.png">
-  <img src="docs/assets/corpus_light.png" alt="3,051地点の散布図2枚: 建物密度 vs 臨界半径 r_crit、建物密度 vs 転移幅 W_trans" width="100%">
+  <img src="docs/assets/corpus_light.png" alt="16,257地点の散布図2枚: 建物密度 vs 臨界半径 r_crit、建物密度 vs 転移幅 W_trans、上の6地点を色付きで表示" width="100%">
 </picture>
+
+再現するには `--corpus <realized_sample.csv>` を渡す。省略するとローカルの `results.db` に
+あるものだけで描かれる。`r_crit` の横縞は本物で、パーコレーションの距離グリッド
+（`config.yaml` の `d_steps`）による量子化。
 
 `experiments/exp01_density_breakdown/` ではこれをさらに進め、*d* の識別寄与が一様基準を
 割り込む密度水準を推定している。

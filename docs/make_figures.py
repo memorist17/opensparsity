@@ -1,11 +1,13 @@
 """README 用の図を results.db から生成する。
 
-    .venv/bin/python docs/make_figures.py --db results/results.db --out docs/assets
+    .venv/bin/python docs/make_figures.py --db results/results.db --out docs/assets \
+        --corpus experiments/exp05_degurba_breakdown/realized_sample.csv
 
 生成物（すべて docs/assets/):
-  sample_{dense,sparse}.png    パイプラインが出力したオーバーレイ PNG の縮小版
+  samples_{light,dark}.png     建物数密度を揃えた6地点のオーバーレイ 2×3
   curves_{light,dark}.png      3指標の曲線（percolation / lacunarity / MFA）の対比
   corpus_{light,dark}.png      コーパス全体での density vs 相転移指標の散布図
+                               （--corpus 省略時は results.db のみ）
   outliers_{light,dark}.png    指標空間のはずれ値5地点 + オーバーレイの色凡例
 
 light / dark の2枚組は GitHub の `<picture>` によるテーマ切り替え用。
@@ -255,13 +257,27 @@ def make_curves(conn: sqlite3.Connection, out: Path, mode: str) -> None:
 
 # ---------------------------------------------------------------- corpus
 
-def make_corpus(conn: sqlite3.Connection, out: Path, mode: str) -> None:
+def make_corpus(conn: sqlite3.Connection, out: Path, mode: str,
+                corpus_csv: Path | None = None) -> None:
+    """コーパス散布図。
+
+    既定は results.db（このマシンが処理した分）。`--corpus` に
+    exp05 の realized_sample.csv を渡すと、DEGURBA 層化サンプルの実現分
+    （全機分を統合したもの）で描く。README の図は後者で生成している。
+    """
     t = THEMES[mode]
     apply_theme(t)
-    df = pd.read_sql(
-        "SELECT name, lat, lon, density, r_crit, W_trans, gamma FROM locations "
-        "WHERE status='done' AND density > 0 AND r_crit IS NOT NULL", conn
-    )
+    if corpus_csv is not None:
+        df = pd.read_csv(corpus_csv)
+        need = {"density", "r_crit", "W_trans"}
+        if not need <= set(df.columns):
+            raise SystemExit(f"{corpus_csv}: 必要な列が無い ({need - set(df.columns)})")
+        df = df[(df["density"] > 0) & df["r_crit"].notna()]
+    else:
+        df = pd.read_sql(
+            "SELECT name, lat, lon, density, r_crit, W_trans, gamma FROM locations "
+            "WHERE status='done' AND density > 0 AND r_crit IS NOT NULL", conn
+        )
     fig, axes = plt.subplots(1, 2, figsize=(11.6, 4.4))
     panels = [
         (axes[0], "r_crit", "critical radius  $r_{crit}$  [m]", True),
@@ -279,15 +295,17 @@ def make_corpus(conn: sqlite3.Connection, out: Path, mode: str) -> None:
             ax.plot(row["density"], row[col], "o", ms=9.5, color=color,
                     mec=t["surface"], mew=2, zorder=5)
         ax.annotate("coloured dots = the six locations above",
-                    (0.03, 0.94), xycoords="axes fraction",
+                    (0.03, 0.045), xycoords="axes fraction",
                     color=t["ink2"], fontsize=9.5, zorder=6)
         ax.set_xscale("log")
         if logy:
             ax.set_yscale("log")
         ax.set_xlabel("building density  $d$")
         ax.set_ylabel(ylabel)
+    src = ("DEGURBA-stratified rural sample" if corpus_csv is not None
+           else "locations in results.db")
     fig.suptitle(
-        f"{len(df):,} locations in results.db  —  at a fixed density, "
+        f"{len(df):,} {src}  —  at a fixed density, "
         "percolation behaviour still spans an order of magnitude",
         color=t["ink"], fontsize=12, x=0.045, ha="left", y=0.972,
     )
@@ -459,6 +477,9 @@ def main() -> None:
     ap.add_argument("--db", default="results/results.db")
     ap.add_argument("--images", default=None, help="default: <db の親>/images")
     ap.add_argument("--out", default="docs/assets")
+    ap.add_argument("--corpus", default=None,
+                    help="コーパス散布図に使う CSV（exp05 の realized_sample.csv）。"
+                         "省略時は results.db")
     ap.add_argument("--reselect", action="store_true",
                     help="はずれ値のランキングを引き直して表示する（図は作らない）")
     args = ap.parse_args()
@@ -481,7 +502,8 @@ def main() -> None:
         for mode in ("light", "dark"):
             make_samples(conn, images_dir, out, mode)
             make_curves(conn, out, mode)
-            make_corpus(conn, out, mode)
+            make_corpus(conn, out, mode,
+                        Path(args.corpus) if args.corpus else None)
             make_outliers(conn, images_dir, out, mode)
         print_sample_table(conn)
         print_outlier_table(conn)

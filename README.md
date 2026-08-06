@@ -214,14 +214,18 @@ there to show *which part of the settlement each exponent is listening to*.
 
 ### Across a corpus
 
-`density` on its own collapses a lot of structure. Over the locations currently in
-`results.db`, the percolation behaviour at any fixed density still spans an order of
-magnitude:
+`density` on its own collapses a lot of structure. Over the **16,257 rural locations** of the
+DEGURBA-stratified global sample, the percolation behaviour at any fixed density still spans
+an order of magnitude — the six locations above are marked in their panel colours:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/corpus_dark.png">
-  <img src="docs/assets/corpus_light.png" alt="Two scatter plots over 3,051 locations: building density against critical radius r_crit, and against transition width W_trans" width="100%">
+  <img src="docs/assets/corpus_light.png" alt="Two scatter plots over 16,257 rural locations: building density against critical radius r_crit, and against transition width W_trans, with the six sample locations marked" width="100%">
 </picture>
+
+Reproduce with `--corpus <realized_sample.csv>`; without it the panel falls back to whatever
+is in the local `results.db`. The horizontal banding in `r_crit` is real — it is quantised by
+the percolation distance grid (`d_steps` in `config.yaml`).
 
 `experiments/exp01_density_breakdown/` takes this further, estimating the density levels at
 which the discriminative contribution of *d* breaks down against a uniform baseline.
