@@ -6,9 +6,16 @@
   sample_{dense,sparse}.png    パイプラインが出力したオーバーレイ PNG の縮小版
   curves_{light,dark}.png      3指標の曲線（percolation / lacunarity / MFA）の対比
   corpus_{light,dark}.png      コーパス全体での density vs 相転移指標の散布図
+  outliers_{light,dark}.png    指標空間のはずれ値5地点 + オーバーレイの色凡例
 
 light / dark の2枚組は GitHub の `<picture>` によるテーマ切り替え用。
-軸ラベルは数式記号＋英語のみ（README.md / README.ja.md で共用するため）。
+図中のラベルは数式記号＋英語のみ（README.md / README.ja.md で共用するため）。
+指標値は図に焼き込まず README 側の表に置く（言語ごとにローカライズするため）。
+
+はずれ値5地点は select_outliers() で導出したものを OUTLIERS に固定してある
+（README の表と図をずれさせないため）。ランキングを引き直すには:
+
+    .venv/bin/python docs/make_figures.py --reselect
 """
 
 from __future__ import annotations
@@ -29,6 +36,31 @@ from PIL import Image
 # 対比に使う2地点（密: 都市中心 / 疎: 山間集落）
 DENSE = ("Yokohama", 35.4437, 139.6380)
 SPARSE = ("Shirakawa-go", 36.2578, 136.9061)
+
+# 指標空間のはずれ値5地点。select_outliers() の出力から、はずれ理由が重複しない
+# ものを選んで固定した。地名は Nominatim の逆ジオコーディング。
+# (lat, lon, 地名, 支配的な特徴, 一言)
+OUTLIERS = [
+    (35.2468, -106.7578, "Sandoval County, New Mexico, US",
+     "$S_\\alpha$ = −3.6 sd", "platted road grid, almost no houses"),
+    (51.3828, 30.1297, "Nahirtsi, Kyiv Oblast, UA",
+     "$\\Delta\\alpha$ = +3.5 sd", "industrial plant inside the exclusion zone"),
+    (43.2698, 141.9659, "Ikushunbetsu, Mikasa, Hokkaido, JP",
+     "$\\gamma$ = +3.2 sd", "shrunken ex-coal town, one tight core"),
+    (49.9048, -119.5471, "West Kelowna Estates, BC, CA",
+     "$r_{crit}$ = +2.6 sd", "houses strung along contour roads"),
+    (52.6052, 19.0713, "Pińczata, gmina Włocławek, PL",
+     "$\\bar\\Lambda$ = +2.0 sd", "single linear village in open fields"),
+]
+
+# render.py のレイヤ色（凡例セル用。render.COL_* と一致させること）
+LAYERS = [
+    ((105, 105, 105), "building raster"),
+    ((208, 208, 208), "road raster"),
+    ((0, 90, 230), "road edge"),
+    ((120, 190, 255), "virtual edge (building → road)"),
+    ((230, 30, 30), "building node"),
+]
 
 # dataviz palette: categorical slot 1 (blue) / slot 2 (orange)
 THEMES = {
@@ -211,24 +243,181 @@ def make_corpus(conn: sqlite3.Connection, out: Path, mode: str) -> None:
     print(f"  {path.name}  (n={len(df)})")
 
 
+# ---------------------------------------------------------------- outliers
+
+# 表1の9次元。裾が重いものは log を取ってから z-score にする
+OS_FEATS = {
+    "density": "log", "lacunarity_mean": "log", "lacunarity_slope": None,
+    "r_crit": "log", "mfa_alpha_width": None, "W_trans": None,
+    "gamma": None, "Delta_D": None, "S_alpha": None,
+}
+COL_VIRT = (120, 190, 255)
+COL_ROAD_EDGE = (0, 90, 230)
+FAN_THRESH = 0.35
+
+
+def virtual_edge_ratio(images_dir: Path, lat: float, lon: float) -> float:
+    """仮想エッジ画素 / 道路エッジ画素。スター（扇状）の検出に使う。
+
+    render.py は ImageDraw で塗るのでアンチエイリアスが無く、レイヤ色が厳密に
+    一致する。建物が最近傍の道路1点へ束で snap すると扇状になり、この比が跳ねる。
+    """
+    a = np.asarray(Image.open(images_dir / f"{lat:.4f}_{lon:.4f}.png").convert("RGB"))
+    virt = int(np.all(a == COL_VIRT, axis=-1).sum())
+    road = int(np.all(a == COL_ROAD_EDGE, axis=-1).sum())
+    return virt / max(road, 1)
+
+
+def select_outliers(conn, images_dir: Path, n: int = 8, probe: int = 120) -> pd.DataFrame:
+    """指標空間のはずれ値をランキングする（OUTLIERS の導出に使った手続き）。
+
+    1. 極端な密度・道路データ欠損・観測窓内で完了しない転移を除外
+    2. 9次元 z-score 空間のマハラノビス距離で降順に並べる
+    3. 上位 probe 件の画像を見てスター（仮想エッジ比 >= FAN_THRESH）を落とす
+    4. 相互 400km 以上離れるものを貪欲に選ぶ（隣接タイルの重複回避）
+    """
+    df = pd.read_sql("SELECT * FROM locations WHERE status='done'", conn)
+    pool = df[
+        df["density"].between(0.003, 0.05)      # 極端な低密度・高密度を除外
+        & (df["road_length_density"] > 1.0)      # 道路が実際にある [km/km2]
+        & (df["n_buildings"] >= 120)             # 指標が意味を持つ建物数
+        & (df["W_trans"] < 1999)                 # 転移が 2km の観測窓内で完了
+    ].dropna(subset=list(OS_FEATS)).copy()
+
+    X = []
+    for f, tr in OS_FEATS.items():
+        v = pool[f].to_numpy(float)
+        if tr == "log":
+            v = np.log10(np.clip(v, 1e-12, None))
+        X.append((v - v.mean()) / v.std())
+    X = np.column_stack(X)
+    inv = np.linalg.pinv(np.cov(X, rowvar=False))
+    pool["maha"] = np.sqrt(np.einsum("ij,jk,ik->i", X, inv, X))
+    pool["drivers"] = [
+        ", ".join(f"{k}={v:+.1f}sd" for k, v in
+                  sorted(zip(OS_FEATS, row), key=lambda kv: -abs(kv[1]))[:3])
+        for row in X
+    ]
+    print(f"  eligible pool: {len(pool)} / {len(df)}")
+
+    ranked = pool.sort_values("maha", ascending=False).head(probe).copy()
+    ranked["fan"] = [virtual_edge_ratio(images_dir, r.lat, r.lon)
+                     for r in ranked.itertuples()]
+    keep = ranked[ranked["fan"] < FAN_THRESH]
+    print(f"  fan-rejected: {len(ranked) - len(keep)} / {len(ranked)} "
+          f"(median ratio {ranked['fan'].median():.2f})")
+
+    picked = []
+    for r in keep.itertuples():
+        far = all(
+            6371 * 2 * np.arcsin(np.sqrt(
+                np.sin(np.radians(p.lat - r.lat) / 2) ** 2
+                + np.cos(np.radians(r.lat)) * np.cos(np.radians(p.lat))
+                * np.sin(np.radians(p.lon - r.lon) / 2) ** 2)) > 400
+            for p in picked
+        )
+        if far:
+            picked.append(r)
+        if len(picked) == n:
+            break
+    return pd.DataFrame(picked)
+
+
+def make_outliers(conn, images_dir: Path, out: Path, mode: str) -> None:
+    t = THEMES[mode]
+    apply_theme(t)
+    fig, axes = plt.subplots(2, 3, figsize=(13.5, 9.9))
+    flat = axes.ravel()
+
+    for ax, (lat, lon, place, driver, note) in zip(flat, OUTLIERS):
+        src = images_dir / f"{lat:.4f}_{lon:.4f}.png"
+        if not src.exists():
+            ax.axis("off")
+            continue
+        im = Image.open(src).convert("RGB").resize((680, 680), Image.LANCZOS)
+        ax.imshow(im)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.grid(False)
+        for s in ax.spines.values():
+            s.set_visible(True)
+            s.set_edgecolor(t["axis"])
+        ax.set_title(f"{place}\n{driver}", fontsize=11, color=t["ink"],
+                     loc="left", linespacing=1.6, pad=7)
+        ax.set_xlabel(note, fontsize=9.5, color=t["ink2"], loc="left", labelpad=7)
+
+    # 6枚目はオーバーレイの色凡例
+    ax = flat[5]
+    ax.axis("off")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.text(0.02, 0.93, "overlay layers", fontsize=11, color=t["ink"])
+    for i, (rgb, label) in enumerate(LAYERS):
+        y = 0.80 - i * 0.105
+        ax.add_patch(plt.Rectangle((0.03, y - 0.022), 0.075, 0.045,
+                                   facecolor="#%02x%02x%02x" % rgb,
+                                   edgecolor=t["axis"], linewidth=0.8))
+        ax.text(0.13, y, label, fontsize=9.5, color=t["ink2"], va="center")
+    ax.text(0.02, 0.20,
+            "north is up · 2 km × 2 km · 1 m/px\nmetrics for each panel are in the "
+            "table below",
+            fontsize=9.5, color=t["muted"], va="top", linespacing=1.7)
+
+    fig.suptitle(
+        "Metric-space outliers  —  mid-density band (0.003 ≤ d ≤ 0.05), real road "
+        "data, virtual-edge fans rejected",
+        fontsize=12.5, color=t["ink"], x=0.028, ha="left", y=0.985)
+    fig.subplots_adjust(left=0.015, right=0.985, top=0.905, bottom=0.03,
+                        wspace=0.07, hspace=0.26)
+    path = out / f"outliers_{mode}.png"
+    fig.savefig(path, dpi=118)
+    plt.close(fig)
+    print(f"  {path.name}  ({path.stat().st_size // 1024} KB)")
+
+
+def print_outlier_table(conn) -> None:
+    """README の表に貼る値を出す。"""
+    print("\n| place | driver | d | r_crit | W_trans | gamma | Lbar | beta | da | Sa | n |")
+    for lat, lon, place, driver, _ in OUTLIERS:
+        m = pd.read_sql(
+            "SELECT * FROM locations WHERE abs(lat-?)<1e-3 AND abs(lon-?)<1e-3",
+            conn, params=(lat, lon)).iloc[0]
+        print(f"| {place} | {driver} | {m.density:.4f} | {m.r_crit:.0f} | "
+              f"{m.W_trans:.0f} | {m.gamma:.4f} | {m.lacunarity_mean:.1f} | "
+              f"{m.lacunarity_slope:.2f} | {m.mfa_alpha_width:.2f} | "
+              f"{m.S_alpha:+.2f} | {m.n_buildings} |")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default="results/results.db")
     ap.add_argument("--images", default=None, help="default: <db の親>/images")
     ap.add_argument("--out", default="docs/assets")
+    ap.add_argument("--reselect", action="store_true",
+                    help="はずれ値のランキングを引き直して表示する（図は作らない）")
     args = ap.parse_args()
 
     db = Path(args.db)
     images_dir = Path(args.images) if args.images else db.parent / "images"
     out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
+        if args.reselect:
+            picked = select_outliers(conn, images_dir)
+            print("\n=== ranking (OUTLIERS はここから選んで固定してある) ===")
+            for i, r in enumerate(picked.itertuples(), 1):
+                print(f"{i}. maha={r.maha:.2f} fan={r.fan:.3f}  "
+                      f"{r.lat:.4f},{r.lon:.4f}  d={r.density:.4f}  {r.drivers}")
+            return
+
+        out.mkdir(parents=True, exist_ok=True)
         make_samples(images_dir, out)
         for mode in ("light", "dark"):
             make_curves(conn, out, mode)
             make_corpus(conn, out, mode)
+            make_outliers(conn, images_dir, out, mode)
+        print_outlier_table(conn)
     finally:
         conn.close()
 

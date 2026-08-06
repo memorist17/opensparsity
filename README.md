@@ -33,6 +33,44 @@ nodes as red dots. North is up.
 
 Same 2 km × 2 km canvas, same code path — two very different structures.
 
+### Five outliers from the corpus
+
+That pair is the easy contrast — one dense, one sparse. The more interesting cases are the
+ones that are extreme in the **indicator space rather than in density**. Filtering
+`results.db` down to the mid-density band (0.003 ≤ *d* ≤ 0.05), to locations that actually
+have road data, and to transitions that complete inside the 2 km window leaves 1,458
+candidates. Ranking those by Mahalanobis distance in the z-scored 9-D OS vector — and
+rejecting virtual-edge fans — gives these:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/outliers_dark.png">
+  <img src="docs/assets/outliers_light.png" alt="Five 2 km overlays: a platted road grid with almost no houses in New Mexico, an industrial plant in the Chornobyl exclusion zone, a shrunken ex-coal town in Hokkaido, houses along contour roads in British Columbia, and a single linear village in Polish farmland, plus a colour key for the overlay layers" width="100%">
+</picture>
+
+| Place | Why it is an outlier | *d* | Λ̄ | r_crit | W_trans | γ | Δα | S_α | bldg |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Sandoval County, New Mexico, US | S_α = **−3.6 sd** | 0.0111 | 23.3 | 92 m | 321 m | 0.0064 | 1.81 | −0.30 | 380 |
+| Nahirtsi, Kyiv Oblast, UA | Δα = **+3.5 sd** | 0.0290 | 16.8 | 294 m | 1913 m | 0.0089 | 2.42 | +0.19 | 125 |
+| Ikushunbetsu, Mikasa, Hokkaido, JP | γ = **+3.2 sd** | 0.0080 | 35.9 | 72 m | 101 m | 0.0194 | 2.10 | +0.21 | 239 |
+| West Kelowna Estates, BC, CA | r_crit = **+2.6 sd** | 0.0077 | 34.4 | 1546 m | 1465 m | 0.0067 | 1.79 | +1.17 | 148 |
+| Pińczata, gmina Włocławek, PL | Λ̄ = **+2.0 sd** | 0.0032 | 70.8 | 92 m | 144 m | 0.0155 | 1.76 | +0.99 | 165 |
+
+- **Sandoval County** carries 11.2 km/km² of road with buildings in one corner only — a
+  platted subdivision that was never built out. Ordinary on density, −3.6 sd on S_α.
+- **Ikushunbetsu** is a shrunken coal town: one tight core in an otherwise empty valley,
+  which makes it the sharpest percolation transition in the pool (W_trans = 101 m).
+- **West Kelowna** is terrain-constrained — houses follow contour roads, so the network
+  connects locally but needs 1.5 km to connect globally.
+- **Nahirtsi** sits inside the Chornobyl exclusion zone, ~2 km east of the plant; the mix of
+  very large halls and small structures gives the widest singularity spectrum here.
+
+The fan rejection matters more than it sounds. When buildings sit far from any road they all
+snap to the same nearest road point, and the overlay fills with a pale-blue fan — an artefact
+of missing road data, not a spatial pattern. `render.py` draws each layer in an exact RGB
+without antialiasing, so the fan is detectable straight from pixel counts: **84 of the top
+120 outlier candidates were rejected this way** (virtual-edge / road-edge pixel ratio ≥ 0.35;
+pool median 0.57). Without that filter the ranking is almost entirely artefacts.
+
 ---
 
 ## Pipeline
@@ -211,8 +249,16 @@ The README figures are generated from `results.db`, so they track the data:
 ```
 
 It emits light/dark pairs (the `<picture>` blocks above switch on GitHub's theme) and
-downsized copies of two overlay PNGs. Axis labels are kept in English + mathematical
-notation so both READMEs share the same images.
+downsized copies of the overlay PNGs. Labels are kept in English + mathematical notation so
+both READMEs share the same images; the numbers live in the tables, not baked into the
+figures.
+
+The five outliers are pinned in `OUTLIERS` so the figure and the table above cannot drift
+apart. To re-run the ranking against the current database instead:
+
+```bash
+.venv/bin/python docs/make_figures.py --reselect
+```
 
 ## Repository layout
 
