@@ -9,3 +9,4 @@ results/
 *.egg-info/
 results_merged/
 logs/
+docs/assets/.cache_gif.npz

@@ -27,16 +27,36 @@ Each processed location gets a 2000×2000 overlay: buildings in dark grey, road 
 light grey, road network edges in blue, virtual building→road edges in pale blue, building
 nodes as red dots. North is up.
 
-| Yokohama — `d = 0.306`, `r_crit = 92 m` | Shirakawa-go — `d = 0.016`, `r_crit = 72 m` |
-| :--- | :--- |
-| <img src="docs/assets/sample_dense.png" alt="Yokohama overlay: dense grid of buildings and roads" width="100%"> | <img src="docs/assets/sample_sparse.png" alt="Shirakawa-go overlay: sparse village strung along a valley" width="100%"> |
+These six were picked to hold the **building count density almost fixed** — 453 to 493
+buildings per km², roughly 1,900 building nodes in every window — so that whatever separates
+them is not *how much* is built:
 
-Same 2 km × 2 km canvas, same code path — two very different structures.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/samples_dark.png">
+  <img src="docs/assets/samples_light.png" alt="Six 2 km overlays at the same building count density, ordered by transition width: a single merged block in Kemerovo, a continuous mass with a roadside tail in Bacău, two quarters joined by a through road in Kharkiv, an irrigated grid in the Mexicali Valley, four separate villages in Chernihiv, and a Nile-valley ribbon in Sohag, plus a colour key for the overlay layers" width="100%">
+</picture>
+
+| Place | Shape | bldg/km² | *d* | r_crit | W_trans | γ | reaches | Λ̄ | Δα | S_α |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Kemerovo Oblast, RU | one block, merges at once | 480 | 0.0628 | 112 m | **55 m** | 0.0193 | 100 % | 5.0 | 2.27 | +0.44 |
+| Bacău County, RO | single mass plus a roadside tail | 493 | 0.0528 | 112 m | 67 m | 0.0187 | 100 % | 5.9 | 2.15 | +0.46 |
+| Kharkiv Oblast, UA | two quarters joined by a through road | 484 | 0.0351 | 253 m | 250 m | 0.0063 | 100 % | 6.9 | 1.88 | +0.51 |
+| Mexicali Valley, MX | irrigated grid, densest of the six | 482 | 0.1009 | 132 m | 297 m | 0.0076 | 98 % | 3.8 | 2.06 | +1.11 |
+| Chernihiv Oblast, UA | four separate villages | 472 | 0.0300 | 556 m | 1910 m | 0.0077 | **82 %** | 7.6 | 1.84 | +1.01 |
+| Sohag Governorate, EG | Nile-valley ribbon | 453 | 0.0371 | **51 m** | **1955 m** | 0.0061 | **54 %** | 9.2 | 1.93 | +0.55 |
+
+Same canvas, same code path. At a fixed building count, `W_trans` still spans **55 m to
+1955 m — a factor of 36** — and two of the six never become a single connected settlement
+inside the window at all.
+
+Sohag is the useful counterexample to the intuition that early connection means easy
+connection: it starts linking at **51 m**, the earliest of the six, and still only reaches
+54 %. Where a transition *starts* and how *wide* it is are independent.
 
 ### Five outliers from the corpus
 
-That pair is the easy contrast — one dense, one sparse. The more interesting cases are the
-ones that are extreme in the **indicator space rather than in density**. Filtering
+Those six were chosen by hand. The more interesting cases are the ones that are extreme in
+the **indicator space rather than in density**. Filtering
 `results.db` down to the mid-density band (0.003 ≤ *d* ≤ 0.05), to locations that actually
 have road data, and to transitions that complete inside the 2 km window leaves 1,458
 candidates. Ranking those by Mahalanobis distance in the z-scored 9-D OS vector — and
@@ -133,7 +153,7 @@ are read off them:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/curves_dark.png">
-  <img src="docs/assets/curves_light.png" alt="Three panels comparing Yokohama and Shirakawa-go: percolation G(r) with r_crit marked, lacunarity Λ(r) on log-log axes, and the multifractal mass exponent τ(q)" width="100%">
+  <img src="docs/assets/curves_light.png" alt="Three panels comparing the six equal-building-count locations: percolation G(r) with r_crit marked, lacunarity Λ(r) on log-log axes, and the multifractal mass exponent τ(q)" width="100%">
 </picture>
 
 | Column | Symbol | Meaning |
@@ -157,6 +177,40 @@ are read off them:
 
 Curves are kept so that a newly conceived indicator can be computed from the database
 alone, without re-fetching.
+
+### How each curve is actually produced
+
+All three animations are the same location — Chernihiv Oblast, four separate villages in one
+2 km window — so the same geometry drives all three measurements.
+
+**Percolation.** Building centroids are the nodes. Two of them count as linked when the
+shortest path *along the road network* between them is ≤ *r*. Growing *r* merges village
+into village; `G(r)` is the fraction of buildings in the largest component. This window
+plateaus at 82 % — the fourth village never joins inside 2 km.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/percolation_dark.gif">
+  <img src="docs/assets/percolation_light.gif" alt="Percolation: as the connection radius grows, building nodes join the giant component and the G(r) curve is traced out" width="100%">
+</picture>
+
+**Lacunarity.** A box of size *r* slides over the building raster; Λ(r) = 1 + σ²/μ² of the
+box masses. Small boxes see mostly-empty space next to solid buildings, so Λ is large;
+as *r* grows the boxes average over both and Λ decays towards 1. The decay rate is `β`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/lacunarity_dark.gif">
+  <img src="docs/assets/lacunarity_light.gif" alt="Lacunarity: boxes of growing size sweep the building raster while the Lambda(r) curve decays" width="100%">
+</picture>
+
+**Multifractal.** Boxes are weighted by μᵢ^q. Negative *q* puts almost all the weight on the
+emptiest occupied boxes, positive *q* on the densest core, and *q* = 0 counts every occupied
+box equally. Sweeping *q* traces τ(q), and Δα, ΔD and S_α are read off it — the animation is
+there to show *which part of the settlement each exponent is listening to*.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/multifractal_dark.gif">
+  <img src="docs/assets/multifractal_light.gif" alt="Multifractal: sweeping the moment order q shifts the weight from the emptiest boxes to the densest core while tau(q) is traced" width="100%">
+</picture>
 
 ### Across a corpus
 
@@ -248,10 +302,20 @@ The README figures are generated from `results.db`, so they track the data:
 .venv/bin/python docs/make_figures.py --db results/results.db --out docs/assets
 ```
 
-It emits light/dark pairs (the `<picture>` blocks above switch on GitHub's theme) and
-downsized copies of the overlay PNGs. Labels are kept in English + mathematical notation so
-both READMEs share the same images; the numbers live in the tables, not baked into the
-figures.
+It emits light/dark pairs (the `<picture>` blocks above switch on GitHub's theme). Labels
+are kept in English + mathematical notation so both READMEs share the same images; the
+numbers live in the tables, not baked into the figures.
+
+The three process animations are separate, because they need the geometry rather than just
+the database:
+
+```bash
+.venv/bin/python docs/make_process_gifs.py --db results/results.db --out docs/assets
+```
+
+The first run fetches that one location from Overture (~100 s) and caches the raster, the
+network and the distance-matrix MST in `docs/assets/.cache_gif.npz`; later runs reuse it.
+`--only percolation|lacunarity|multifractal` rebuilds a single animation.
 
 The five outliers are pinned in `OUTLIERS` so the figure and the table above cannot drift
 apart. To re-run the ranking against the current database instead:

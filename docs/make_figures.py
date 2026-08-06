@@ -33,9 +33,23 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-# 対比に使う2地点（密: 都市中心 / 疎: 山間集落）
-DENSE = ("Yokohama", 35.4437, 139.6380)
-SPARSE = ("Shirakawa-go", 36.2578, 136.9061)
+# 冒頭の対比に使う6地点。**建物数密度をほぼ揃えて**(453〜493 棟/km²) 選んであり、
+# 密度ではなく連結の仕方だけが違う。W_trans 昇順（急峻→緩慢）に並べる。
+# 地名は座標から手で付けた第一級行政区までの粗いラベル（逆ジオコーディングはしていない）。
+SAMPLES = [
+    (54.69096165056791, 86.214870614306, "Kemerovo Oblast, RU",
+     "one block, merges at once"),
+    (46.4751256374219, 26.907104232287203, "Bacău County, RO",
+     "single continuous mass plus a roadside tail"),
+    (49.90481089852312, 35.55097797648567, "Kharkiv Oblast, UA",
+     "two quarters joined by a through road"),
+    (32.79737946508413, -115.54387905207328, "Mexicali Valley, MX",
+     "irrigated grid, the densest of the six"),
+    (50.68964379968809, 31.14663778761328, "Chernihiv Oblast, UA",
+     "four separate villages, never one whole"),
+    (26.600953516604516, 31.603211722393414, "Sohag Governorate, EG",
+     "Nile-valley ribbon, links early, never finishes"),
+]
 
 # 指標空間のはずれ値5地点。select_outliers() の出力から、はずれ理由が重複しない
 # ものを選んで固定した。地名は Nominatim の逆ジオコーディング。
@@ -67,10 +81,12 @@ THEMES = {
     "light": dict(
         surface="#fcfcfb", ink="#0b0b0b", ink2="#52514e", muted="#898781",
         grid="#e1e0d9", axis="#c3c2b7", s1="#2a78d6", s2="#eb6834",
+        cats=["#2a78d6", "#17a398", "#7d55c7", "#c9971b", "#eb6834", "#c0392b"],
     ),
     "dark": dict(
         surface="#1a1a19", ink="#ffffff", ink2="#c3c2b7", muted="#898781",
         grid="#2c2c2a", axis="#383835", s1="#3987e5", s2="#d95926",
+        cats=["#4d94ea", "#25c2b4", "#a684e8", "#e3b53c", "#e8703f", "#e4584a"],
     ),
 }
 
@@ -110,19 +126,58 @@ def metrics(conn: sqlite3.Connection, lat: float, lon: float) -> pd.Series:
 
 # ---------------------------------------------------------------- samples
 
-def make_samples(images_dir: Path, out: Path, size: int = 900) -> None:
-    for tag, (_, lat, lon) in (("dense", DENSE), ("sparse", SPARSE)):
+def make_samples(conn: sqlite3.Connection, images_dir: Path, out: Path,
+                 mode: str) -> None:
+    """建物数密度をほぼ揃えた6地点を 2×3 で並べる。凡例は図の下端に横一列。"""
+    t = THEMES[mode]
+    apply_theme(t)
+    fig, axes = plt.subplots(2, 3, figsize=(13.5, 9.6))
+
+    for ax, color, (lat, lon, place, note) in zip(axes.ravel(), t["cats"], SAMPLES):
         src = images_dir / f"{lat:.4f}_{lon:.4f}.png"
         if not src.exists():
-            print(f"  skip sample_{tag}: {src} not found")
+            ax.axis("off")
+            print(f"  missing overlay: {src.name}")
             continue
-        # 元画像は 2000x2000。縮小後に 64色パレット化してリポジトリ内サイズを抑える
-        # （レイヤは 6 色しか使っていないので、増えるのは縮小の中間色だけ）
-        im = Image.open(src).convert("RGB").resize((size, size), Image.LANCZOS)
-        im = im.quantize(colors=64, method=Image.MEDIANCUT, dither=Image.NONE)
-        dst = out / f"sample_{tag}.png"
-        im.save(dst, optimize=True)
-        print(f"  sample_{tag}.png  <- {src.name}  ({dst.stat().st_size // 1024} KB)")
+        ax.imshow(Image.open(src).convert("RGB").resize((680, 680), Image.LANCZOS))
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.grid(False)
+        for s in ax.spines.values():
+            s.set_visible(True)
+            s.set_edgecolor(color)
+            s.set_linewidth(2.2)
+        m = metrics(conn, lat, lon)
+        ax.set_title(
+            f"{place}\n$W_{{trans}}$ = {m['W_trans']:.0f} m   ·   "
+            f"reaches {m['perc_gmax'] * 100:.0f} %",
+            fontsize=11, color=t["ink"], loc="left", linespacing=1.6, pad=7)
+        ax.set_xlabel(note, fontsize=9.5, color=t["ink2"], loc="left", labelpad=7)
+
+    # 下端の色凡例（オーバーレイのレイヤ）
+    x = 0.018
+    for rgb, label in LAYERS:
+        fig.patches.append(plt.Rectangle(
+            (x, 0.012), 0.016, 0.017, transform=fig.transFigure,
+            facecolor="#%02x%02x%02x" % rgb, edgecolor=t["axis"], linewidth=0.8))
+        fig.text(x + 0.022, 0.0205, label, fontsize=9.5, color=t["ink2"], va="center")
+        x += 0.026 + 0.0088 * len(label)
+
+    fig.suptitle(
+        "Six locations at the same building count density (453–493 buildings/km²)  —  "
+        "north is up · 2 km × 2 km · 1 m/px",
+        fontsize=12.5, color=t["ink"], x=0.018, ha="left", y=0.986)
+    fig.subplots_adjust(left=0.012, right=0.988, top=0.9, bottom=0.055,
+                        wspace=0.07, hspace=0.27)
+    path = out / f"samples_{mode}.png"
+    fig.savefig(path, dpi=118)
+    plt.close(fig)
+    # オーバーレイは6色しか使っていないので、パレット化してリポジトリ内サイズを抑える
+    # （増えるのは縮小とテキストのアンチエイリアス由来の中間色だけ）
+    Image.open(path).convert("RGB").quantize(
+        colors=128, method=Image.MEDIANCUT, dither=Image.NONE
+    ).save(path, optimize=True)
+    print(f"  {path.name}  ({path.stat().st_size // 1024} KB)")
 
 
 # ---------------------------------------------------------------- curves
@@ -131,10 +186,10 @@ def make_curves(conn: sqlite3.Connection, out: Path, mode: str) -> None:
     t = THEMES[mode]
     apply_theme(t)
     series = []
-    for (name, lat, lon), color in ((DENSE, t["s1"]), (SPARSE, t["s2"])):
+    for (lat, lon, name, _note), color in zip(SAMPLES, t["cats"]):
         m = metrics(conn, lat, lon)
         series.append(dict(
-            label=f"{name}  (d = {m['density']:.3f})", color=color, m=m,
+            label=f"{name}  ($W_{{trans}}$ = {m['W_trans']:.0f} m)", color=color, m=m,
             perc=curve(conn, lat, lon, "percolation"),
             lac=curve(conn, lat, lon, "lacunarity"),
             mfa=curve(conn, lat, lon, "mfa_spectrum"),
@@ -144,15 +199,15 @@ def make_curves(conn: sqlite3.Connection, out: Path, mode: str) -> None:
     ax1, ax2, ax3 = axes
 
     # (1) percolation G(r) — r_crit = argmax dG/dr（表1定義）
-    for s, dy in zip(series, (14, -20)):
+    for s in series:
         p = s["perc"]
         ax1.plot(p["d"], p["giant_fraction"], color=s["color"], label=s["label"])
         rc = float(s["m"]["r_crit"])
         g = float(np.interp(rc, p["d"], p["giant_fraction"]))
-        ax1.plot([rc], [g], "o", ms=8, color=s["color"],
-                 mec=t["surface"], mew=2, zorder=5)
-        ax1.annotate(f"$r_{{crit}}$ = {rc:.0f} m", (rc, g), color=t["ink"],
-                     textcoords="offset points", xytext=(12, dy), fontsize=10)
+        ax1.plot([rc], [g], "o", ms=7.5, color=s["color"],
+                 mec=t["surface"], mew=1.8, zorder=5)
+    ax1.annotate("dots mark $r_{crit}$", (0.03, 0.94), xycoords="axes fraction",
+                 color=t["ink2"], fontsize=9.5)
     ax1.set_xscale("log")
     ax1.set_xlabel("connection radius $r$  [m]")
     ax1.set_ylabel("giant component fraction  $G(r)$")
@@ -184,12 +239,14 @@ def make_curves(conn: sqlite3.Connection, out: Path, mode: str) -> None:
 
     handles, labels = ax1.get_legend_handles_labels()
     fig.suptitle(
-        "One `ops run` per location stores three curves in results.db",
-        color=t["ink"], fontsize=12, x=0.038, ha="left", y=0.978,
+        "One `ops run` per location stores three curves in results.db  —  "
+        "the six locations above, at the same building count density",
+        color=t["ink"], fontsize=12, x=0.032, ha="left", y=0.982,
     )
-    fig.legend(handles, labels, loc="upper left", ncol=2, labelcolor=t["ink"],
-               bbox_to_anchor=(0.032, 0.945), fontsize=11)
-    fig.tight_layout(rect=(0, 0, 1, 0.895))
+    fig.legend(handles, labels, loc="upper left", ncol=3, labelcolor=t["ink"],
+               bbox_to_anchor=(0.026, 0.955), fontsize=10.5,
+               columnspacing=1.6, handlelength=1.6)
+    fig.tight_layout(rect=(0, 0, 1, 0.845))
     path = out / f"curves_{mode}.png"
     fig.savefig(path, dpi=130)
     plt.close(fig)
@@ -214,18 +271,16 @@ def make_corpus(conn: sqlite3.Connection, out: Path, mode: str) -> None:
         sub = df.dropna(subset=[col])
         ax.scatter(sub["density"], sub[col], s=6, c=t["muted"], alpha=0.30,
                    linewidths=0, zorder=2)
-        for ((name, lat, lon), color, off) in (
-            (DENSE, t["s1"], (10, 12)), (SPARSE, t["s2"], (-10, 14))
-        ):
+        # 冒頭の6地点を重ねる。ほぼ同じ建物数密度なのに縦に大きく散ることを見せる。
+        for (lat, lon, _name, _note), color in zip(SAMPLES, t["cats"]):
             row = sub[(sub["lat"] == lat) & (sub["lon"] == lon)]
             if row.empty:
                 continue
-            ax.plot(row["density"], row[col], "o", ms=10, color=color,
+            ax.plot(row["density"], row[col], "o", ms=9.5, color=color,
                     mec=t["surface"], mew=2, zorder=5)
-            ax.annotate(name, (row["density"].iloc[0], row[col].iloc[0]),
-                        color=t["ink"], textcoords="offset points", xytext=off,
-                        ha="left" if off[0] > 0 else "right", fontsize=10,
-                        zorder=6)
+        ax.annotate("coloured dots = the six locations above",
+                    (0.03, 0.94), xycoords="axes fraction",
+                    color=t["ink2"], fontsize=9.5, zorder=6)
         ax.set_xscale("log")
         if logy:
             ax.set_yscale("log")
@@ -375,6 +430,17 @@ def make_outliers(conn, images_dir: Path, out: Path, mode: str) -> None:
     print(f"  {path.name}  ({path.stat().st_size // 1024} KB)")
 
 
+def print_sample_table(conn) -> None:
+    """README 冒頭の6地点表に貼る値を出す。"""
+    print("\n| place | note | bldg/km² | d | r_crit | W_trans | gamma | gmax | Lbar | da | Sa |")
+    for lat, lon, place, note in SAMPLES:
+        m = metrics(conn, lat, lon)
+        print(f"| {place} | {note} | {m.building_count_density:.0f} | {m.density:.4f} | "
+              f"{m.r_crit:.0f} | {m.W_trans:.0f} | {m.gamma:.4f} | "
+              f"{m.perc_gmax * 100:.0f}% | {m.lacunarity_mean:.1f} | "
+              f"{m.mfa_alpha_width:.2f} | {m.S_alpha:+.2f} |")
+
+
 def print_outlier_table(conn) -> None:
     """README の表に貼る値を出す。"""
     print("\n| place | driver | d | r_crit | W_trans | gamma | Lbar | beta | da | Sa | n |")
@@ -412,11 +478,12 @@ def main() -> None:
             return
 
         out.mkdir(parents=True, exist_ok=True)
-        make_samples(images_dir, out)
         for mode in ("light", "dark"):
+            make_samples(conn, images_dir, out, mode)
             make_curves(conn, out, mode)
             make_corpus(conn, out, mode)
             make_outliers(conn, images_dir, out, mode)
+        print_sample_table(conn)
         print_outlier_table(conn)
     finally:
         conn.close()
