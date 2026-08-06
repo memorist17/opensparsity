@@ -54,6 +54,17 @@ def _connect() -> duckdb.DuckDBPyConnection:
     conn.execute("INSTALL spatial; LOAD spatial; INSTALL httpfs; LOAD httpfs;")
     conn.execute("SET s3_region='us-west-2';")
     conn.execute("SET s3_access_key_id=''; SET s3_secret_access_key='';")
+    # 細い回線でも大きな parquet GET を待ちきれるよう、待ち時間とリトライを延長する。
+    for stmt in (
+        "SET http_timeout=3600000;",
+        "SET http_retries=8;",
+        "SET http_retry_wait_ms=2000;",
+        "SET http_keep_alive=true;",
+    ):
+        try:
+            conn.execute(stmt)
+        except duckdb.Error:
+            pass
     return conn
 
 

@@ -113,11 +113,32 @@ def main(argv: list[str] | None = None) -> int:
         # URI形式('file:...?mode=ro')はsqliteのビルドによって使えないため、
         # プレーンなパスをパラメータバインドで渡す（書き込みはINSERTのみで src には触れない）
         store.conn.execute("ATTACH DATABASE ? AS src", (str(args.src_db),))
+
+        # 列は必ず名前で対応させる。`SELECT *` は物理的な列順で入るため、
+        # CREATE TABLE で作った DB（r_crit が中ほど）と ALTER TABLE ADD COLUMN で
+        # 移行した DB（r_crit が末尾）を混ぜると、perc_dcrit〜r_crit の8列が
+        # 1つずつズレたまま静かに書き込まれる（2026-08-07 に実データで発覚）。
+        def common_columns(table: str) -> list[str]:
+            dst = [r[1] for r in store.conn.execute(f"PRAGMA table_info({table})")]
+            src = {r[1] for r in store.conn.execute(f"PRAGMA src.table_info({table})")}
+            missing = [c for c in dst if c not in src]
+            if missing:
+                print(f"  {table}: src に無い列は NULL のまま: {', '.join(missing)}")
+            return [c for c in dst if c in src]
+
         with store.conn:
-            store.conn.execute("INSERT OR REPLACE INTO locations SELECT * FROM src.locations")
-            store.conn.execute("INSERT OR REPLACE INTO curves SELECT * FROM src.curves")
+            for table in ("locations", "curves"):
+                cols = common_columns(table)
+                if not cols:
+                    raise SystemExit(f"{table}: 共通の列が無い（スキーマ不一致）")
+                names = ", ".join(f'"{c}"' for c in cols)
+                store.conn.execute(
+                    f"INSERT OR REPLACE INTO {table} ({names}) "
+                    f"SELECT {names} FROM src.{table}"
+                )
         n1 = store.conn.execute("SELECT count(*) FROM locations").fetchone()[0]
         print(f"merged: {n0} -> {n1} rows")
+        store.conn.execute("DETACH DATABASE src")
         store.close()
         return 0
 
